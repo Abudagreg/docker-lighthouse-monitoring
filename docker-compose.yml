@@ -46,14 +46,14 @@ services:
       DB_PASSWORD: lighthouse_pass
       DB_NAME: lighthouse_db
       LIGHTHOUSE_SERVICE_URL: http://lighthouse:3001
-      PORT: 3000
+      PORT: 2000
     depends_on:
       db:
         condition: service_healthy
       lighthouse:
         condition: service_started
     ports:
-      - "3000:3000"
+      - "2000:2000"
 
 volumes:
   pg_data:
