@@ -2,10 +2,13 @@
 CREATE TABLE IF NOT EXISTS clients (
   id               SERIAL PRIMARY KEY,
   name             VARCHAR(255) NOT NULL,
-  url              VARCHAR(500) NOT NULL UNIQUE,
+  url              VARCHAR(500) NOT NULL,
+  platform         VARCHAR(10)  NOT NULL DEFAULT 'both',  -- 'mobile' | 'desktop' | 'both'
   schedule         VARCHAR(100),
   schedule_enabled BOOLEAN DEFAULT FALSE,
-  created_at       TIMESTAMP DEFAULT NOW()
+  created_at       TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT clients_name_unique        UNIQUE (name),
+  CONSTRAINT clients_url_platform_unique UNIQUE (url, platform)
 );
 
 -- Audits table
@@ -20,12 +23,12 @@ CREATE TABLE IF NOT EXISTS audits (
   seo            NUMERIC(5,2),
   pwa            NUMERIC(5,2),
   -- Performance sub-metrics
-  fcp_ms         NUMERIC(10,2),   -- First Contentful Paint (ms)
-  lcp_ms         NUMERIC(10,2),   -- Largest Contentful Paint (ms)
-  tbt_ms         NUMERIC(10,2),   -- Total Blocking Time (ms)
-  si_ms          NUMERIC(10,2),   -- Speed Index (ms)
-  tti_ms         NUMERIC(10,2),   -- Time to Interactive (ms)
-  cls            NUMERIC(8,4),    -- Cumulative Layout Shift (score, e.g. 0.05)
+  fcp_ms         NUMERIC(10,2),
+  lcp_ms         NUMERIC(10,2),
+  tbt_ms         NUMERIC(10,2),
+  si_ms          NUMERIC(10,2),
+  tti_ms         NUMERIC(10,2),
+  cls            NUMERIC(8,4),
   -- Full report
   report_json    JSONB,
   status         VARCHAR(20) DEFAULT 'completed',

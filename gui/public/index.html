@@ -1124,6 +1124,70 @@
         border-radius: 99px;
         transition: width 0.5s ease;
       }
+      /* ── Platform picker ── */
+      .platform-toggle {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+      .platform-opt {
+        display: none;
+      }
+      .platform-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 6px;
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        background: var(--surface2);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text2);
+        text-align: center;
+      }
+      .platform-label:hover {
+        border-color: var(--accent);
+        color: var(--text);
+      }
+      .platform-opt:checked + .platform-label {
+        border-color: var(--accent);
+        background: rgba(245, 166, 35, 0.08);
+        color: var(--accent);
+      }
+      .platform-label .pl-icon {
+        font-size: 1.1rem;
+      }
+      /* platform badge on client card */
+      .platform-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 4px;
+        letter-spacing: 0.04em;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .pb-mobile {
+        background: rgba(91, 141, 239, 0.12);
+        color: var(--blue);
+      }
+      .pb-desktop {
+        background: rgba(45, 212, 191, 0.1);
+        color: var(--teal);
+      }
+      .pb-both {
+        background: rgba(245, 166, 35, 0.1);
+        color: var(--accent);
+      }
+      /* locked FF toggle */
+      .ff-btn.locked {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
       @media (max-width: 1050px) {
         .cwv-grid {
           grid-template-columns: repeat(2, 1fr);
@@ -1177,6 +1241,45 @@
                 type="url"
                 placeholder="https://example.com"
               />
+            </div>
+            <div class="field">
+              <label>Platform</label>
+              <div class="platform-toggle">
+                <span
+                  ><input
+                    class="platform-opt"
+                    type="radio"
+                    name="clientPlatform"
+                    id="plMobile"
+                    value="mobile"
+                  /><label class="platform-label" for="plMobile"
+                    ><span class="pl-icon">📱</span>Mobile</label
+                  ></span
+                >
+                <span
+                  ><input
+                    class="platform-opt"
+                    type="radio"
+                    name="clientPlatform"
+                    id="plDesktop"
+                    value="desktop"
+                  /><label class="platform-label" for="plDesktop"
+                    ><span class="pl-icon">🖥</span>Desktop</label
+                  ></span
+                >
+                <span
+                  ><input
+                    class="platform-opt"
+                    type="radio"
+                    name="clientPlatform"
+                    id="plBoth"
+                    value="both"
+                    checked
+                  /><label class="platform-label" for="plBoth"
+                    ><span class="pl-icon">⚡</span>Both</label
+                  ></span
+                >
+              </div>
             </div>
             <button
               class="btn btn-primary"
@@ -1774,9 +1877,24 @@
             const sl = c.schedule
               ? `<div class="client-schedule-label">◷ ${descSched(c.schedule)}${!c.schedule_enabled ? " (paused)" : ""}</div>`
               : "";
+            const pbMap = {
+              mobile: "📱 Mobile",
+              desktop: "🖥 Desktop",
+              both: "⚡ Both",
+            };
+            const pbCls = {
+              mobile: "pb-mobile",
+              desktop: "pb-desktop",
+              both: "pb-both",
+            };
+            const plat = c.platform || "both";
             return `<div class="client-item ${selectedClient?.id === c.id ? "active" : ""}" onclick="selectClient(${c.id})">
       <div class="client-avatar">${c.name.slice(0, 2).toUpperCase()}${hs ? '<span class="schedule-dot"></span>' : ""}</div>
-      <div class="client-info"><div class="client-name">${escHtml(c.name)}</div><div class="client-url">${escHtml(c.url)}</div>${sl}</div>
+      <div class="client-info">
+        <div class="client-name">${escHtml(c.name)}</div>
+        <div class="client-url">${escHtml(c.url)}</div>
+        <div style="margin-top:3px"><span class="platform-badge ${pbCls[plat]}">${pbMap[plat]}</span>${sl ? "&nbsp;" + sl : ""}</div>
+      </div>
       <span class="client-score ${scoreClass(c.last_performance)}">${scoreStr(c.last_performance)}</span>
     </div>`;
           })
@@ -1785,6 +1903,9 @@
       async function addClient() {
         const name = document.getElementById("clientName").value.trim(),
           url = document.getElementById("clientUrl").value.trim();
+        const platform =
+          document.querySelector('input[name="clientPlatform"]:checked')
+            ?.value || "both";
         if (!name || !url)
           return showToast("Name and URL are required", "error");
         const btn = document.getElementById("addClientBtn");
@@ -1794,12 +1915,14 @@
           const res = await fetch("/api/clients", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, url }),
+            body: JSON.stringify({ name, url, platform }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
           document.getElementById("clientName").value = "";
           document.getElementById("clientUrl").value = "";
+          // Reset platform to Both
+          document.getElementById("plBoth").checked = true;
           showToast(`"${name}" added!`);
           await loadClients();
         } catch (e) {
@@ -1816,13 +1939,17 @@
         renderClientList();
         await renderClientDetail();
       }
-      function setFormFactor(ff) {
+      function setFormFactor(ff, locked = false) {
         currentFormFactor = ff;
         document.querySelectorAll(".ff-btn").forEach((b) => {
           const it = b.dataset.ff === ff;
           b.classList.toggle("active", it);
           b.classList.toggle("mobile-active", it && ff === "mobile");
           b.classList.toggle("desktop-active", it && ff === "desktop");
+          b.classList.toggle("locked", locked);
+          if (locked)
+            b.title = "Platform is locked to " + ff + " for this client";
+          else b.title = "";
         });
       }
 
@@ -1881,9 +2008,9 @@
           <div class="audit-url">${escHtml(c.url)}</div>
           <div class="audit-timestamp">${lastAudit}</div>
         </div>
-        <div class="ff-toggle">
-          <button class="ff-btn mobile-active active" data-ff="mobile" onclick="setFormFactor('mobile')">📱 Mobile</button>
-          <button class="ff-btn" data-ff="desktop" onclick="setFormFactor('desktop')">🖥 Desktop</button>
+        <div class="ff-toggle" title="${c.platform !== "both" ? "Locked to " + c.platform : "Switch audit device"}">
+          <button class="ff-btn mobile-active active" data-ff="mobile" onclick="if(!this.classList.contains('locked'))setFormFactor('mobile')">📱 Mobile</button>
+          <button class="ff-btn" data-ff="desktop" onclick="if(!this.classList.contains('locked'))setFormFactor('desktop')">🖥 Desktop</button>
         </div>
         <button class="btn btn-ghost" onclick="deleteClient(${c.id})">🗑 Remove</button>
         <button class="btn btn-primary" id="runAuditBtn" onclick="runAudit(${c.id})" style="width:auto">▶ Run Audit</button>
@@ -1957,7 +2084,17 @@
       </div>
     </div>`;
 
-        setFormFactor(currentFormFactor);
+        // Lock FF toggle if client has dedicated platform
+        const plat = c.platform || "both";
+        if (plat === "mobile") {
+          setFormFactor("mobile", true);
+          currentFormFactor = "mobile";
+        } else if (plat === "desktop") {
+          setFormFactor("desktop", true);
+          currentFormFactor = "desktop";
+        } else {
+          setFormFactor(currentFormFactor, false);
+        }
         refreshDateUI();
         if (selectedCategory) renderChartDrawer(selectedCategory);
       }

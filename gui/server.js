@@ -5,7 +5,7 @@ const cron = require("node-cron");
 const { Pool } = require("pg");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 2000;
 const LIGHTHOUSE_URL =
   process.env.LIGHTHOUSE_SERVICE_URL || "http://lighthouse:3001";
 
@@ -36,12 +36,20 @@ async function waitForDb(retries = 10, delay = 3000) {
   throw new Error("Could not connect to database");
 }
 
-async function runAuditForClient(clientId, formFactor = "mobile") {
+// Resolve which form factor to actually run for a client based on its platform setting
+function resolveFormFactor(clientPlatform, requestedFormFactor = "mobile") {
+  if (clientPlatform === "mobile") return "mobile";
+  if (clientPlatform === "desktop") return "desktop";
+  return requestedFormFactor; // 'both' → honour what the user picked
+}
+
+async function runAuditForClient(clientId, requestedFormFactor = "mobile") {
   const clientResult = await pool.query("SELECT * FROM clients WHERE id = $1", [
     clientId,
   ]);
   if (!clientResult.rows.length) throw new Error("Client not found");
-  const { url } = clientResult.rows[0];
+  const { url, platform } = clientResult.rows[0];
+  const formFactor = resolveFormFactor(platform, requestedFormFactor);
   const endpoint = `${LIGHTHOUSE_URL}/audit?url=${encodeURIComponent(url)}&client_id=${clientId}&form_factor=${formFactor}`;
   const response = await fetch(endpoint, { timeout: 180000 });
   const data = await response.json();
@@ -94,7 +102,7 @@ async function initSchedules() {
   }
 }
 
-// ── Clients ──────────────────────────────────────────────────────
+// ── Clients ───────────────────────────────────────────────────────
 app.get("/api/clients", async (req, res) => {
   try {
     const result = await pool.query(
@@ -112,19 +120,36 @@ app.get("/api/clients", async (req, res) => {
 });
 
 app.post("/api/clients", async (req, res) => {
-  const { name, url } = req.body;
+  const { name, url, platform = "both" } = req.body;
   if (!name || !url)
     return res.status(400).json({ error: "name and url required" });
+  if (!["mobile", "desktop", "both"].includes(platform)) {
+    return res
+      .status(400)
+      .json({ error: "platform must be mobile, desktop, or both" });
+  }
   try {
-    new URL(url);
+    new URL(url); // validate
     const result = await pool.query(
-      "INSERT INTO clients (name, url) VALUES ($1, $2) RETURNING *",
-      [name, url],
+      "INSERT INTO clients (name, url, platform) VALUES ($1, $2, $3) RETURNING *",
+      [name, url, platform],
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    if (err.code === "23505")
-      return res.status(409).json({ error: "URL already exists" });
+    if (err.code === "23505") {
+      // Which constraint fired?
+      if (err.constraint === "clients_name_unique") {
+        return res.status(409).json({
+          error: `A client named "${name}" already exists. Please use a different name.`,
+        });
+      }
+      if (err.constraint === "clients_url_platform_unique") {
+        return res.status(409).json({
+          error: `A ${platform} client for this URL already exists. You can still add it with a different platform.`,
+        });
+      }
+      return res.status(409).json({ error: "Duplicate client" });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -142,7 +167,6 @@ app.delete("/api/clients/:id", async (req, res) => {
 // ── Audits ────────────────────────────────────────────────────────
 app.get("/api/clients/:id/audits", async (req, res) => {
   try {
-    // Include CWV metrics; exclude heavy report_json
     const result = await pool.query(
       `SELECT id, client_id, form_factor,
               performance, accessibility, best_practices, seo, pwa,
@@ -158,9 +182,10 @@ app.get("/api/clients/:id/audits", async (req, res) => {
 });
 
 app.post("/api/clients/:id/audit", async (req, res) => {
-  const formFactor = req.body?.form_factor === "desktop" ? "desktop" : "mobile";
+  const requestedFF =
+    req.body?.form_factor === "desktop" ? "desktop" : "mobile";
   try {
-    const data = await runAuditForClient(parseInt(req.params.id), formFactor);
+    const data = await runAuditForClient(parseInt(req.params.id), requestedFF);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -257,7 +282,7 @@ app.patch("/api/clients/:id/schedule/toggle", async (req, res) => {
 app.get("/api/schedules", async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, url, schedule, schedule_enabled FROM clients WHERE schedule IS NOT NULL ORDER BY name`,
+      `SELECT id, name, url, platform, schedule, schedule_enabled FROM clients WHERE schedule IS NOT NULL ORDER BY name`,
     );
     res.json(
       result.rows.map((r) => ({ ...r, job_active: activeJobs.has(r.id) })),
@@ -270,7 +295,7 @@ app.get("/api/schedules", async (req, res) => {
 app.get("/api/dashboard", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT c.id, c.name, c.url, c.schedule, c.schedule_enabled,
+      SELECT c.id, c.name, c.url, c.platform, c.schedule, c.schedule_enabled,
              a.performance, a.accessibility, a.best_practices, a.seo, a.pwa,
              a.status, a.audited_at
       FROM clients c
