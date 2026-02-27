@@ -2,7 +2,6 @@ const express = require("express");
 const chromeLauncher = require("chrome-launcher");
 const { Pool } = require("pg");
 
-// Lighthouse v12+ is ESM-only; dynamic import bridges CJS → ESM
 let lighthouseFn;
 async function getLighthouse() {
   if (!lighthouseFn) {
@@ -14,7 +13,6 @@ async function getLighthouse() {
 
 const app = express();
 app.use(express.json());
-
 const PORT = process.env.PORT || 3001;
 
 const pool = new Pool({
@@ -39,8 +37,6 @@ async function waitForDb(retries = 10, delay = 3000) {
   throw new Error("Could not connect to database");
 }
 
-// ── Lighthouse configs per form factor ──────────────────────────
-
 function getLighthouseConfig(formFactor) {
   if (formFactor === "desktop") {
     return {
@@ -61,12 +57,9 @@ function getLighthouseConfig(formFactor) {
         disabled: false,
       },
       emulatedUserAgent:
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     };
   }
-
-  // Mobile (default)
   return {
     formFactor: "mobile",
     throttling: {
@@ -85,20 +78,20 @@ function getLighthouseConfig(formFactor) {
       disabled: false,
     },
     emulatedUserAgent:
-      "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 " +
-      "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+      "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
   };
 }
 
-// ── Health ───────────────────────────────────────────────────────
+// Extract a numeric audit value safely
+function auditVal(lhr, key) {
+  const v = lhr.audits?.[key]?.numericValue;
+  return v !== undefined && v !== null && !isNaN(v) ? v : null;
+}
+
 app.get("/health", (req, res) =>
   res.json({ status: "ok", service: "lighthouse" }),
 );
 
-// ── Audit ────────────────────────────────────────────────────────
-/**
- * GET /audit?url=https://example.com&client_id=1&form_factor=desktop
- */
 app.get("/audit", async (req, res) => {
   const { url, client_id } = req.query;
   const formFactor = req.query.form_factor === "desktop" ? "desktop" : "mobile";
@@ -141,9 +134,7 @@ app.get("/audit", async (req, res) => {
       ],
     });
 
-    const lighthouseConfig = getLighthouseConfig(formFactor);
     const lighthouse = await getLighthouse();
-
     const runnerResult = await lighthouse(
       url,
       {
@@ -160,13 +151,14 @@ app.get("/audit", async (req, res) => {
       },
       {
         extends: "lighthouse:default",
-        settings: lighthouseConfig,
+        settings: getLighthouseConfig(formFactor),
       },
     );
 
     const lhr = runnerResult.lhr;
     const { categories } = lhr;
 
+    // Category scores (0–100)
     const scores = {
       performance: Math.round((categories.performance?.score || 0) * 100),
       accessibility: Math.round((categories.accessibility?.score || 0) * 100),
@@ -177,19 +169,35 @@ app.get("/audit", async (req, res) => {
       pwa: Math.round((categories.pwa?.score || 0) * 100),
     };
 
-    // Save scores + full report JSON
+    // Core Web Vitals & performance sub-metrics
+    const metrics = {
+      fcp_ms: auditVal(lhr, "first-contentful-paint"),
+      lcp_ms: auditVal(lhr, "largest-contentful-paint"),
+      tbt_ms: auditVal(lhr, "total-blocking-time"),
+      si_ms: auditVal(lhr, "speed-index"),
+      tti_ms: auditVal(lhr, "interactive"),
+      cls: auditVal(lhr, "cumulative-layout-shift"),
+    };
+
     if (auditId) {
       await pool.query(
         `UPDATE audits SET
-          performance=$1, accessibility=$2, best_practices=$3,
-          seo=$4, pwa=$5, report_json=$6, status='completed', audited_at=NOW()
-         WHERE id=$7`,
+           performance=$1, accessibility=$2, best_practices=$3, seo=$4, pwa=$5,
+           fcp_ms=$6, lcp_ms=$7, tbt_ms=$8, si_ms=$9, tti_ms=$10, cls=$11,
+           report_json=$12, status='completed', audited_at=NOW()
+         WHERE id=$13`,
         [
           scores.performance,
           scores.accessibility,
           scores.best_practices,
           scores.seo,
           scores.pwa,
+          metrics.fcp_ms,
+          metrics.lcp_ms,
+          metrics.tbt_ms,
+          metrics.si_ms,
+          metrics.tti_ms,
+          metrics.cls,
           JSON.stringify(lhr),
           auditId,
         ],
@@ -197,8 +205,9 @@ app.get("/audit", async (req, res) => {
     } else if (client_id) {
       const ins = await pool.query(
         `INSERT INTO audits
-           (client_id, form_factor, performance, accessibility, best_practices, seo, pwa, report_json, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'completed') RETURNING id`,
+           (client_id, form_factor, performance, accessibility, best_practices, seo, pwa,
+            fcp_ms, lcp_ms, tbt_ms, si_ms, tti_ms, cls, report_json, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'completed') RETURNING id`,
         [
           client_id,
           formFactor,
@@ -207,18 +216,29 @@ app.get("/audit", async (req, res) => {
           scores.best_practices,
           scores.seo,
           scores.pwa,
+          metrics.fcp_ms,
+          metrics.lcp_ms,
+          metrics.tbt_ms,
+          metrics.si_ms,
+          metrics.tti_ms,
+          metrics.cls,
           JSON.stringify(lhr),
         ],
       );
       auditId = ins.rows[0].id;
     }
 
-    console.log(`✅ Audit complete [${formFactor}] for ${url}:`, scores);
+    console.log(
+      `✅ Audit complete [${formFactor}] for ${url}:`,
+      scores,
+      metrics,
+    );
     res.json({
       success: true,
       url,
       form_factor: formFactor,
       scores,
+      metrics,
       audit_id: auditId,
     });
   } catch (err) {
@@ -233,9 +253,8 @@ app.get("/audit", async (req, res) => {
     }
     res.status(500).json({ success: false, error: err.message });
   } finally {
-    if (chrome && typeof chrome.kill === "function") {
+    if (chrome && typeof chrome.kill === "function")
       await chrome.kill().catch(() => {});
-    }
   }
 });
 

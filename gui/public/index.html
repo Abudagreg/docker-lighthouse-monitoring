@@ -8,11 +8,13 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;600;700&display=swap"
       rel="stylesheet"
     />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <style>
       :root {
         --bg: #0a0c0f;
         --surface: #111418;
         --surface2: #181c22;
+        --surface3: #1e232b;
         --border: #22272f;
         --border2: #2e3540;
         --accent: #f5a623;
@@ -22,6 +24,7 @@
         --blue: #5b8def;
         --purple: #a78bfa;
         --teal: #2dd4bf;
+        --orange: #fb923c;
         --muted: #5a6475;
         --text: #d8dde6;
         --text2: #9aa3b0;
@@ -44,12 +47,12 @@
         content: "";
         position: fixed;
         inset: 0;
+        pointer-events: none;
+        z-index: 0;
         background-image:
           linear-gradient(rgba(245, 166, 35, 0.02) 1px, transparent 1px),
           linear-gradient(90deg, rgba(245, 166, 35, 0.02) 1px, transparent 1px);
         background-size: 40px 40px;
-        pointer-events: none;
-        z-index: 0;
       }
       header {
         z-index: 10;
@@ -111,7 +114,6 @@
           opacity: 0.3;
         }
       }
-
       main {
         position: relative;
         z-index: 1;
@@ -180,11 +182,6 @@
       .field input::placeholder {
         color: var(--muted);
       }
-      .field select option {
-        background: var(--surface2);
-      }
-
-      /* Buttons */
       .btn {
         padding: 10px 18px;
         border: none;
@@ -207,9 +204,6 @@
       .btn-primary:hover {
         background: var(--accent2);
         transform: translateY(-1px);
-      }
-      .btn-primary:active {
-        transform: translateY(0);
       }
       .btn-primary:disabled {
         opacity: 0.4;
@@ -259,8 +253,6 @@
       .btn-teal:hover {
         background: rgba(45, 212, 191, 0.18);
       }
-
-      /* Form factor toggle */
       .ff-toggle {
         display: flex;
         background: var(--surface2);
@@ -283,13 +275,9 @@
         align-items: center;
         gap: 5px;
       }
-      .ff-btn:hover {
-        color: var(--text2);
-      }
       .ff-btn.active {
         background: var(--surface);
         color: var(--text);
-        box-shadow: inset 0 0 0 1px var(--border2);
       }
       .ff-btn.active.mobile-active {
         color: var(--blue);
@@ -297,8 +285,6 @@
       .ff-btn.active.desktop-active {
         color: var(--teal);
       }
-
-      /* Client list */
       .client-list {
         display: flex;
         flex-direction: column;
@@ -376,7 +362,6 @@
         font-weight: 700;
         font-size: 0.88rem;
       }
-
       .empty-state {
         padding: 3rem 1.5rem;
         text-align: center;
@@ -390,14 +375,13 @@
         font-size: 0.85rem;
         line-height: 1.6;
       }
-
       .right-panel {
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
       }
 
-      /* Score grid */
+      /* ── Score grid ── */
       .score-grid {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
@@ -409,9 +393,26 @@
         padding: 1.25rem 1rem;
         text-align: center;
         transition: background 0.2s;
+        cursor: pointer;
+        position: relative;
       }
       .score-card:hover {
         background: var(--surface2);
+      }
+      .score-card.selected {
+        background: var(--surface2);
+      }
+      .score-card.selected::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--card-color, var(--accent));
+      }
+      .score-card-inner {
+        pointer-events: none;
       }
       .score-value {
         font-family: "JetBrains Mono", monospace;
@@ -427,6 +428,16 @@
         text-transform: uppercase;
         color: var(--muted);
       }
+      .score-hint {
+        font-size: 0.62rem;
+        color: var(--muted);
+        margin-top: 4px;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .score-card:hover .score-hint {
+        opacity: 1;
+      }
       .score-good {
         color: var(--green);
       }
@@ -440,6 +451,370 @@
         color: var(--muted);
       }
 
+      /* ── Date range bar ── */
+      .date-range-bar {
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        background: var(--surface2);
+      }
+      .date-range-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .dr-preset {
+        padding: 5px 12px;
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text2);
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .dr-preset:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .dr-preset.active {
+        background: rgba(245, 166, 35, 0.1);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .dr-custom-btn {
+        padding: 5px 12px;
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text2);
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        position: relative;
+      }
+      .dr-custom-btn:hover,
+      .dr-custom-btn.active {
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      .dr-custom-btn.active {
+        background: rgba(91, 141, 239, 0.1);
+      }
+      .dr-range-display {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        color: var(--text2);
+        padding: 4px 10px;
+        border-radius: 6px;
+        background: var(--surface3);
+        border: 1px solid var(--border2);
+        white-space: nowrap;
+      }
+      .dr-count {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.68rem;
+        color: var(--muted);
+        margin-left: auto;
+      }
+
+      /* ── Calendar picker popup ── */
+      .cal-popup {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        z-index: 500;
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        padding: 1.25rem;
+        display: none;
+        min-width: 580px;
+      }
+      .cal-popup.open {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .cal-popup-months {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+      .cal-month-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+      }
+      .cal-month-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--text);
+      }
+      .cal-nav-btn {
+        background: none;
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        color: var(--text2);
+        cursor: pointer;
+        padding: 3px 8px;
+        font-size: 0.8rem;
+        transition: all 0.15s;
+      }
+      .cal-nav-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .cal-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+      }
+      .cal-dow {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-align: center;
+        color: var(--muted);
+        padding: 4px 0;
+        letter-spacing: 0.06em;
+      }
+      .cal-day {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.76rem;
+        text-align: center;
+        padding: 6px 2px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+        color: var(--text2);
+        border: 1px solid transparent;
+      }
+      .cal-day:hover:not(.cal-empty):not(.cal-disabled) {
+        background: var(--surface2);
+        color: var(--text);
+        border-color: var(--border2);
+      }
+      .cal-day.cal-empty {
+        cursor: default;
+      }
+      .cal-day.cal-disabled {
+        color: var(--border2);
+        cursor: default;
+      }
+      .cal-day.cal-today {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .cal-day.cal-start,
+      .cal-day.cal-end {
+        background: var(--accent);
+        color: #0a0c0f;
+        font-weight: 700;
+        border-color: var(--accent);
+      }
+      .cal-day.cal-in-range {
+        background: rgba(245, 166, 35, 0.12);
+        color: var(--text);
+        border-radius: 0;
+      }
+      .cal-day.cal-start {
+        border-radius: 6px 0 0 6px;
+      }
+      .cal-day.cal-end {
+        border-radius: 0 6px 6px 0;
+      }
+      .cal-day.cal-start.cal-end {
+        border-radius: 6px;
+      }
+      .cal-popup-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+      }
+      .cal-selected-display {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        color: var(--text2);
+      }
+      .cal-selected-display span {
+        color: var(--accent);
+      }
+      .cal-popup-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .cal-clear-btn {
+        background: none;
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 5px 12px;
+        font-size: 0.75rem;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+        transition: all 0.15s;
+      }
+      .cal-clear-btn:hover {
+        border-color: var(--red);
+        color: var(--red);
+      }
+      .cal-apply-btn {
+        background: var(--accent);
+        border: none;
+        border-radius: 6px;
+        color: #0a0c0f;
+        cursor: pointer;
+        padding: 5px 14px;
+        font-size: 0.75rem;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        transition: all 0.15s;
+      }
+      .cal-apply-btn:hover {
+        background: var(--accent2);
+      }
+      .cal-apply-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* ── Chart drawer ── */
+      .chart-drawer {
+        overflow: hidden;
+        max-height: 0;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border-top: 0px solid var(--border);
+      }
+      .chart-drawer.open {
+        max-height: 1000px;
+        border-top-width: 1px;
+      }
+      .chart-drawer-inner {
+        padding: 1.5rem;
+      }
+      .chart-drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+      }
+      .chart-drawer-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .chart-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: color 0.15s;
+      }
+      .chart-close:hover {
+        color: var(--text);
+      }
+      .chart-main-wrap {
+        height: 200px;
+        position: relative;
+        margin-bottom: 1.5rem;
+      }
+      .cwv-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 1rem;
+      }
+      .cwv-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+      }
+      .cwv-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+      }
+      .cwv-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+      }
+      .cwv-card-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .cwv-card-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.35rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .cwv-card-rating {
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-top: 2px;
+        display: inline-block;
+      }
+      .rating-good {
+        background: rgba(62, 207, 142, 0.12);
+        color: var(--green);
+      }
+      .rating-ni {
+        background: rgba(245, 166, 35, 0.12);
+        color: var(--accent);
+      }
+      .rating-poor {
+        background: rgba(242, 107, 107, 0.1);
+        color: var(--red);
+      }
+      .rating-na {
+        background: rgba(90, 100, 117, 0.15);
+        color: var(--muted);
+      }
+      .cwv-spark-wrap {
+        height: 60px;
+        position: relative;
+      }
+
+      /* ── Audit bar & history ── */
       .audit-bar {
         padding: 1.25rem;
         display: flex;
@@ -462,8 +837,6 @@
         color: var(--muted);
         margin-top: 2px;
       }
-
-      /* Schedule section */
       .schedule-section {
         padding: 1.25rem;
         border-bottom: 1px solid var(--border);
@@ -524,11 +897,6 @@
       .cron-input-row input {
         flex: 1;
       }
-      .cron-input-row .btn {
-        padding: 10px 14px;
-        font-size: 0.8rem;
-        width: auto;
-      }
       .cron-hint {
         font-size: 0.68rem;
         color: var(--muted);
@@ -571,8 +939,6 @@
         display: flex;
         gap: 6px;
       }
-
-      /* History table */
       .history-table {
         width: 100%;
         border-collapse: collapse;
@@ -601,8 +967,6 @@
       .history-table tr:hover td {
         background: var(--surface2);
       }
-
-      /* Form factor badge in table */
       .ff-badge {
         display: inline-flex;
         align-items: center;
@@ -621,7 +985,6 @@
         background: rgba(45, 212, 191, 0.1);
         color: var(--teal);
       }
-
       .spinner {
         width: 14px;
         height: 14px;
@@ -636,7 +999,6 @@
           transform: rotate(360deg);
         }
       }
-
       #toast {
         position: fixed;
         bottom: 2rem;
@@ -677,81 +1039,6 @@
           opacity: 1;
         }
       }
-
-      @media (max-width: 900px) {
-        main {
-          grid-template-columns: 1fr;
-        }
-        .score-grid {
-          grid-template-columns: repeat(3, 1fr);
-        }
-        .preset-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-      }
-
-      .welcome {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 5rem 2rem;
-        text-align: center;
-        color: var(--muted);
-      }
-      .welcome .big-icon {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        opacity: 0.4;
-      }
-      .welcome h2 {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--text2);
-        margin-bottom: 0.5rem;
-      }
-      .welcome p {
-        font-size: 0.85rem;
-        max-width: 320px;
-        line-height: 1.7;
-      }
-
-      .badge {
-        display: inline-block;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.68rem;
-        font-weight: 700;
-        padding: 2px 7px;
-        border-radius: 4px;
-        letter-spacing: 0.06em;
-      }
-      .badge-running {
-        background: rgba(91, 141, 239, 0.15);
-        color: var(--blue);
-      }
-      .badge-failed {
-        background: rgba(242, 107, 107, 0.12);
-        color: var(--red);
-      }
-      .badge-ok {
-        background: rgba(62, 207, 142, 0.12);
-        color: var(--green);
-      }
-
-      .progress-bar-wrap {
-        height: 3px;
-        background: var(--border);
-        border-radius: 99px;
-        overflow: hidden;
-        margin-top: 4px;
-      }
-      .progress-bar {
-        height: 100%;
-        border-radius: 99px;
-        transition: width 0.5s ease;
-      }
-
-      /* Viewer loading overlay */
       #viewerOverlay {
         display: none;
         position: fixed;
@@ -779,6 +1066,87 @@
         border-radius: 50%;
         animation: spin 0.9s linear infinite;
       }
+      .welcome {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 5rem 2rem;
+        text-align: center;
+        color: var(--muted);
+      }
+      .welcome .big-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.4;
+      }
+      .welcome h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text2);
+        margin-bottom: 0.5rem;
+      }
+      .welcome p {
+        font-size: 0.85rem;
+        max-width: 320px;
+        line-height: 1.7;
+      }
+      .badge {
+        display: inline-block;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        letter-spacing: 0.06em;
+      }
+      .badge-running {
+        background: rgba(91, 141, 239, 0.15);
+        color: var(--blue);
+      }
+      .badge-failed {
+        background: rgba(242, 107, 107, 0.12);
+        color: var(--red);
+      }
+      .badge-ok {
+        background: rgba(62, 207, 142, 0.12);
+        color: var(--green);
+      }
+      .progress-bar-wrap {
+        height: 3px;
+        background: var(--border);
+        border-radius: 99px;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+      .progress-bar {
+        height: 100%;
+        border-radius: 99px;
+        transition: width 0.5s ease;
+      }
+      @media (max-width: 1050px) {
+        .cwv-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 900px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+        .score-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .preset-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .cal-popup {
+          min-width: unset;
+          width: calc(100vw - 2rem);
+        }
+        .cal-popup-months {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body>
@@ -791,9 +1159,7 @@
         <span class="status-dot"></span>SYSTEM ONLINE
       </div>
     </header>
-
     <main>
-      <!-- Left sidebar -->
       <div style="display: flex; flex-direction: column; gap: 1.5rem">
         <div class="panel">
           <div class="panel-header">
@@ -801,12 +1167,12 @@
           </div>
           <div class="form-body">
             <div class="field">
-              <label>Site Name</label>
-              <input id="clientName" type="text" placeholder="My Website" />
+              <label>Site Name</label
+              ><input id="clientName" type="text" placeholder="My Website" />
             </div>
             <div class="field">
-              <label>URL</label>
-              <input
+              <label>URL</label
+              ><input
                 id="clientUrl"
                 type="url"
                 placeholder="https://example.com"
@@ -821,7 +1187,6 @@
             </button>
           </div>
         </div>
-
         <div class="panel">
           <div class="panel-header">
             <span class="panel-title">Monitored Sites</span>
@@ -843,8 +1208,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Right panel -->
       <div class="right-panel" id="rightPanel">
         <div class="panel">
           <div class="welcome">
@@ -858,8 +1221,6 @@
         </div>
       </div>
     </main>
-
-    <!-- Viewer loading overlay -->
     <div id="viewerOverlay">
       <div class="big-spinner"></div>
       <p>Opening Lighthouse Viewer…</p>
@@ -867,15 +1228,124 @@
         Sending report via postMessage
       </p>
     </div>
-
     <div id="toast"></div>
 
     <script>
-      let selectedClient = null;
-      let clients = [];
-      let currentFormFactor = "mobile"; // global toggle state
+      // ── State ─────────────────────────────────────────────────────────
+      let selectedClient = null,
+        clients = [],
+        currentAudits = [];
+      let currentFormFactor = "mobile",
+        selectedCategory = null;
 
-      const PRESETS = [
+      // Date range state
+      // preset: '1d'|'7d'|'30d'|'all'|'custom'
+      // from/to: Date | null  (inclusive, whole-day boundaries)
+      const DR = { preset: "all", from: null, to: null };
+
+      // Calendar picker state
+      const CAL = {
+        leftYear: 0,
+        leftMonth: 0,
+        pickFrom: null,
+        pickTo: null,
+        hovering: null,
+      };
+
+      const chartInstances = {};
+      function destroyChart(k) {
+        if (chartInstances[k]) {
+          chartInstances[k].destroy();
+          delete chartInstances[k];
+        }
+      }
+      function destroyAllCharts() {
+        Object.keys(chartInstances).forEach((k) => destroyChart(k));
+      }
+
+      // ── Category config ───────────────────────────────────────────────
+      const CATEGORIES = {
+        performance: {
+          label: "Performance",
+          key: "performance",
+          color: "#f5a623",
+        },
+        accessibility: {
+          label: "Accessibility",
+          key: "accessibility",
+          color: "#5b8def",
+        },
+        best_practices: {
+          label: "Best Practices",
+          key: "best_practices",
+          color: "#a78bfa",
+        },
+        seo: { label: "SEO", key: "seo", color: "#3ecf8e" },
+        pwa: { label: "PWA", key: "pwa", color: "#2dd4bf" },
+      };
+      const CWV = [
+        {
+          key: "fcp_ms",
+          label: "First Contentful Paint",
+          abbr: "FCP",
+          color: "#5b8def",
+          unit: "s",
+          factor: 1 / 1000,
+          decimals: 1,
+          thresholds: [1800, 3000],
+        },
+        {
+          key: "lcp_ms",
+          label: "Largest Contentful Paint",
+          abbr: "LCP",
+          color: "#fb923c",
+          unit: "s",
+          factor: 1 / 1000,
+          decimals: 1,
+          thresholds: [2500, 4000],
+        },
+        {
+          key: "tbt_ms",
+          label: "Total Blocking Time",
+          abbr: "TBT",
+          color: "#f26b6b",
+          unit: "ms",
+          factor: 1,
+          decimals: 0,
+          thresholds: [200, 600],
+        },
+        {
+          key: "si_ms",
+          label: "Speed Index",
+          abbr: "SI",
+          color: "#a78bfa",
+          unit: "s",
+          factor: 1 / 1000,
+          decimals: 1,
+          thresholds: [3400, 5800],
+        },
+        {
+          key: "tti_ms",
+          label: "Time to Interactive",
+          abbr: "TTI",
+          color: "#2dd4bf",
+          unit: "s",
+          factor: 1 / 1000,
+          decimals: 1,
+          thresholds: [3800, 7300],
+        },
+        {
+          key: "cls",
+          label: "Cumulative Layout Shift",
+          abbr: "CLS",
+          color: "#3ecf8e",
+          unit: "",
+          factor: 1,
+          decimals: 3,
+          thresholds: [0.1, 0.25],
+        },
+      ];
+      const CRON_PRESETS = [
         { label: "Every hour", cron: "0 * * * *" },
         { label: "Every 6h", cron: "0 */6 * * *" },
         { label: "Every 12h", cron: "0 */12 * * *" },
@@ -884,7 +1354,289 @@
         { label: "Weekly Mon", cron: "0 9 * * 1" },
       ];
 
-      // ── Toast ─────────────────────────────────────────────
+      function cwvRating(m, v) {
+        if (v == null) return "na";
+        const val = v * m.factor;
+        if (val <= m.thresholds[0] * m.factor) return "good";
+        if (val <= m.thresholds[1] * m.factor) return "ni";
+        return "poor";
+      }
+      function cwvFormat(m, v) {
+        if (v == null) return "—";
+        return (v * m.factor).toFixed(m.decimals) + m.unit;
+      }
+
+      // ── Date range helpers ────────────────────────────────────────────
+      function startOfDay(d) {
+        const r = new Date(d);
+        r.setHours(0, 0, 0, 0);
+        return r;
+      }
+      function endOfDay(d) {
+        const r = new Date(d);
+        r.setHours(23, 59, 59, 999);
+        return r;
+      }
+
+      function applyPreset(preset) {
+        DR.preset = preset;
+        const now = new Date();
+        if (preset === "1d") {
+          DR.from = startOfDay(now);
+          DR.to = endOfDay(now);
+        } else if (preset === "7d") {
+          const f = new Date(now);
+          f.setDate(f.getDate() - 6);
+          DR.from = startOfDay(f);
+          DR.to = endOfDay(now);
+        } else if (preset === "30d") {
+          const f = new Date(now);
+          f.setDate(f.getDate() - 29);
+          DR.from = startOfDay(f);
+          DR.to = endOfDay(now);
+        } else {
+          DR.from = null;
+          DR.to = null;
+        } // 'all'
+        closeCal();
+        refreshDateUI();
+        if (selectedCategory) renderChartDrawer(selectedCategory);
+        refreshHistoryTable();
+      }
+
+      function filteredAudits() {
+        if (!DR.from && !DR.to) return currentAudits;
+        return currentAudits.filter((a) => {
+          const t = new Date(a.audited_at).getTime();
+          if (DR.from && t < DR.from.getTime()) return false;
+          if (DR.to && t > DR.to.getTime()) return false;
+          return true;
+        });
+      }
+
+      function rangeDisplayStr() {
+        if (!DR.from && !DR.to) return "All time";
+        if (DR.preset !== "custom") {
+          if (DR.preset === "1d") return "Today";
+          if (DR.preset === "7d") return "Last 7 days";
+          if (DR.preset === "30d") return "Last 30 days";
+        }
+        const fmt = (d) =>
+          d ? `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}` : "?";
+        return `${fmt(DR.from)} — ${fmt(DR.to)}`;
+      }
+
+      function refreshDateUI() {
+        document.querySelectorAll(".dr-preset").forEach((b) => {
+          b.classList.toggle("active", b.dataset.preset === DR.preset);
+        });
+        const customBtn = document.getElementById("drCustomBtn");
+        if (customBtn)
+          customBtn.classList.toggle("active", DR.preset === "custom");
+        const disp = document.getElementById("drRangeDisplay");
+        if (disp) disp.textContent = rangeDisplayStr();
+        const cnt = document.getElementById("drCount");
+        if (cnt) {
+          const n = filteredAudits().length;
+          cnt.textContent = n + " audit" + (n === 1 ? "" : "s");
+        }
+      }
+      function refreshHistoryTable() {
+        const tbody = document.getElementById("historyBody");
+        if (!tbody) return;
+        tbody.innerHTML = buildHistoryRows(filteredAudits().slice(0, 50));
+      }
+
+      // ── Calendar picker ───────────────────────────────────────────────
+      const MONTHS = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const DOWS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+      function openCal() {
+        const popup = document.getElementById("calPopup");
+        if (!popup) return;
+        // Init to current range or today
+        const now = new Date();
+        CAL.leftYear = DR.from ? DR.from.getFullYear() : now.getFullYear();
+        CAL.leftMonth = DR.from ? DR.from.getMonth() : now.getMonth();
+        // If showing current month, go back one so right shows current
+        const rightDate = new Date(CAL.leftYear, CAL.leftMonth + 1, 1);
+        if (rightDate > now) {
+          CAL.leftMonth--;
+          if (CAL.leftMonth < 0) {
+            CAL.leftMonth = 11;
+            CAL.leftYear--;
+          }
+        }
+        CAL.pickFrom = DR.preset === "custom" ? DR.from : null;
+        CAL.pickTo = DR.preset === "custom" ? DR.to : null;
+        CAL.hovering = null;
+        renderCal();
+        popup.classList.add("open");
+        document.addEventListener("mousedown", calOutsideClick, { once: true });
+      }
+      function closeCal() {
+        const popup = document.getElementById("calPopup");
+        if (popup) popup.classList.remove("open");
+      }
+      function calOutsideClick(e) {
+        const popup = document.getElementById("calPopup");
+        const btn = document.getElementById("drCustomBtn");
+        if (
+          popup &&
+          !popup.contains(e.target) &&
+          btn &&
+          !btn.contains(e.target)
+        ) {
+          closeCal();
+        } else {
+          document.addEventListener("mousedown", calOutsideClick, {
+            once: true,
+          });
+        }
+      }
+      function calNav(delta) {
+        CAL.leftMonth += delta;
+        if (CAL.leftMonth > 11) {
+          CAL.leftMonth = 0;
+          CAL.leftYear++;
+        }
+        if (CAL.leftMonth < 0) {
+          CAL.leftMonth = 11;
+          CAL.leftYear--;
+        }
+        renderCal();
+      }
+      function renderCal() {
+        const popup = document.getElementById("calPopup");
+        if (!popup) return;
+        const rightYear =
+          CAL.leftMonth === 11 ? CAL.leftYear + 1 : CAL.leftYear;
+        const rightMonth = CAL.leftMonth === 11 ? 0 : CAL.leftMonth + 1;
+        popup.querySelector(".cal-popup-months").innerHTML =
+          buildCalMonth(CAL.leftYear, CAL.leftMonth, true) +
+          buildCalMonth(rightYear, rightMonth, false);
+        updateCalFooter();
+      }
+      function buildCalMonth(year, month, showPrev) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        let html = `<div>
+    <div class="cal-month-nav">
+      ${showPrev ? `<button class="cal-nav-btn" onclick="calNav(-1)">‹</button>` : `<span></span>`}
+      <span class="cal-month-title">${MONTHS[month]} ${year}</span>
+      ${!showPrev ? `<button class="cal-nav-btn" onclick="calNav(1)">›</button>` : `<span></span>`}
+    </div>
+    <div class="cal-grid">
+      ${DOWS.map((d) => `<div class="cal-dow">${d}</div>`).join("")}
+      ${Array(firstDay).fill('<div class="cal-day cal-empty"></div>').join("")}`;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const date = new Date(year, month, d);
+          date.setHours(0, 0, 0, 0);
+          const ts = date.getTime();
+          const isFuture = date > today;
+          const isToday = date.getTime() === today.getTime();
+          const from = CAL.pickFrom ? startOfDay(CAL.pickFrom).getTime() : null;
+          const to = CAL.pickTo ? startOfDay(CAL.pickTo).getTime() : null;
+          const hov = CAL.hovering ? startOfDay(CAL.hovering).getTime() : null;
+          // Determine effective range for in-range highlight
+          let rangeFrom = from,
+            rangeTo = to ?? hov;
+          if (rangeFrom && rangeTo && rangeFrom > rangeTo) {
+            [rangeFrom, rangeTo] = [rangeTo, rangeFrom];
+          }
+          const isStart = from && ts === from;
+          const isEnd = to && ts === to;
+          const isHovEnd = !to && hov && from && ts === hov;
+          const inRange =
+            rangeFrom && rangeTo && ts > rangeFrom && ts < rangeTo;
+          let cls = "cal-day";
+          if (isFuture) cls += " cal-disabled";
+          if (isToday) cls += " cal-today";
+          if (isStart) cls += " cal-start";
+          if (isEnd || isHovEnd) cls += " cal-end";
+          if (inRange) cls += " cal-in-range";
+          const handlers = isFuture
+            ? ""
+            : `onclick="calDayClick(${year},${month},${d})" onmouseenter="calHover(${year},${month},${d})"`;
+          html += `<div class="${cls}" ${handlers}>${d}</div>`;
+        }
+        html += "</div></div>";
+        return html;
+      }
+      function calDayClick(y, m, d) {
+        const clicked = new Date(y, m, d);
+        clicked.setHours(0, 0, 0, 0);
+        if (!CAL.pickFrom || (CAL.pickFrom && CAL.pickTo)) {
+          // Start fresh
+          CAL.pickFrom = clicked;
+          CAL.pickTo = null;
+          CAL.hovering = null;
+        } else {
+          // Second click
+          if (clicked < CAL.pickFrom) {
+            CAL.pickTo = CAL.pickFrom;
+            CAL.pickFrom = clicked;
+          } else {
+            CAL.pickTo = clicked;
+          }
+          CAL.hovering = null;
+        }
+        renderCal();
+      }
+      function calHover(y, m, d) {
+        if (CAL.pickFrom && !CAL.pickTo) {
+          CAL.hovering = new Date(y, m, d);
+          renderCal();
+        }
+      }
+      function updateCalFooter() {
+        const disp = document.getElementById("calSelectedDisplay");
+        const applyBtn = document.getElementById("calApplyBtn");
+        if (!disp || !applyBtn) return;
+        const fmt = (d) =>
+          d ? `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}` : "—";
+        if (!CAL.pickFrom) {
+          disp.innerHTML = "Select start date";
+        } else if (!CAL.pickTo) {
+          disp.innerHTML = `<span>${fmt(CAL.pickFrom)}</span> → select end date`;
+        } else {
+          disp.innerHTML = `<span>${fmt(CAL.pickFrom)}</span> — <span>${fmt(CAL.pickTo)}</span>`;
+        }
+        applyBtn.disabled = !(CAL.pickFrom && CAL.pickTo);
+      }
+      function calApply() {
+        if (!CAL.pickFrom || !CAL.pickTo) return;
+        DR.preset = "custom";
+        DR.from = startOfDay(CAL.pickFrom);
+        DR.to = endOfDay(CAL.pickTo);
+        closeCal();
+        refreshDateUI();
+        if (selectedCategory) renderChartDrawer(selectedCategory);
+        refreshHistoryTable();
+      }
+      function calClear() {
+        CAL.pickFrom = null;
+        CAL.pickTo = null;
+        CAL.hovering = null;
+        renderCal();
+      }
+
+      // ── Helpers ───────────────────────────────────────────────────────
       function showToast(msg, type = "success") {
         const el = document.createElement("div");
         el.className = `toast-item ${type}`;
@@ -892,7 +1644,6 @@
         document.getElementById("toast").appendChild(el);
         setTimeout(() => el.remove(), 4000);
       }
-
       function scoreClass(v) {
         if (v == null) return "score-none";
         if (v >= 90) return "score-good";
@@ -908,9 +1659,9 @@
         if (v >= 50) return "var(--accent)";
         return "var(--red)";
       }
-      function describeSchedule(expr) {
-        const match = PRESETS.find((p) => p.cron === expr);
-        return match ? match.label : expr;
+      function descSched(e) {
+        const m = CRON_PRESETS.find((p) => p.cron === e);
+        return m ? m.label : e;
       }
       function escHtml(s) {
         return String(s)
@@ -920,7 +1671,84 @@
           .replace(/"/g, "&quot;");
       }
 
-      // ── Load clients ───────────────────────────────────────
+      // ── Chart defaults ────────────────────────────────────────────────
+      Chart.defaults.color = "#5a6475";
+      Chart.defaults.font.family = "'JetBrains Mono',monospace";
+      Chart.defaults.font.size = 11;
+      function gradFill(ctx, color) {
+        const g = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+        g.addColorStop(0, color + "33");
+        g.addColorStop(1, color + "00");
+        return g;
+      }
+      function buildLineChart(id, labels, datasets, opts = {}) {
+        destroyChart(id);
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        chartInstances[id] = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: datasets.map((ds) => ({
+              label: ds.label,
+              data: ds.data,
+              borderColor: ds.color,
+              backgroundColor:
+                opts.fill !== false ? gradFill(ctx, ds.color) : "transparent",
+              borderWidth: opts.sparkline ? 1.5 : 2,
+              pointRadius: opts.sparkline ? 0 : 3,
+              pointHoverRadius: opts.sparkline ? 3 : 5,
+              pointBackgroundColor: ds.color,
+              fill: true,
+              tension: 0.4,
+            })),
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 400 },
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: {
+                display: datasets.length > 1,
+                labels: { boxWidth: 10, padding: 16, color: "#9aa3b0" },
+              },
+              tooltip: {
+                backgroundColor: "#181c22",
+                borderColor: "#2e3540",
+                borderWidth: 1,
+                titleColor: "#d8dde6",
+                bodyColor: "#9aa3b0",
+                padding: 10,
+                displayColors: datasets.length > 1,
+                callbacks: {
+                  label: (ctx) =>
+                    opts.tooltipSuffix !== undefined
+                      ? ` ${ctx.dataset.label}: ${ctx.parsed.y != null ? ctx.parsed.y.toFixed(opts.decimals ?? 0) + opts.tooltipSuffix : "—"}`
+                      : ` ${ctx.dataset.label}: ${ctx.parsed.y != null ? ctx.parsed.y : "—"}`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                display: !opts.sparkline,
+                grid: { color: "#22272f" },
+                ticks: { maxRotation: 0, maxTicksLimit: 8 },
+              },
+              y: {
+                display: !opts.sparkline,
+                grid: { color: "#22272f" },
+                min: opts.yMin,
+                max: opts.yMax,
+                ticks: { callback: (v) => v + (opts.tooltipSuffix || "") },
+              },
+            },
+          },
+        });
+      }
+
+      // ── Load / render clients ─────────────────────────────────────────
       async function loadClients() {
         try {
           const res = await fetch("/api/clients");
@@ -933,7 +1761,6 @@
           showToast("Failed to load clients", "error");
         }
       }
-
       function renderClientList() {
         const el = document.getElementById("clientList");
         document.getElementById("clientCount").textContent = clients.length;
@@ -943,32 +1770,21 @@
         }
         el.innerHTML = clients
           .map((c) => {
-            const isActive = selectedClient?.id === c.id;
-            const hasSchedule = c.schedule && c.schedule_enabled;
-            const schedLbl = c.schedule
-              ? `<div class="client-schedule-label">◷ ${describeSchedule(c.schedule)}${!c.schedule_enabled ? " (paused)" : ""}</div>`
+            const hs = c.schedule && c.schedule_enabled;
+            const sl = c.schedule
+              ? `<div class="client-schedule-label">◷ ${descSched(c.schedule)}${!c.schedule_enabled ? " (paused)" : ""}</div>`
               : "";
-            return `
-        <div class="client-item ${isActive ? "active" : ""}" onclick="selectClient(${c.id})">
-          <div class="client-avatar">
-            ${c.name.slice(0, 2).toUpperCase()}
-            ${hasSchedule ? '<span class="schedule-dot"></span>' : ""}
-          </div>
-          <div class="client-info">
-            <div class="client-name">${escHtml(c.name)}</div>
-            <div class="client-url">${escHtml(c.url)}</div>
-            ${schedLbl}
-          </div>
-          <span class="client-score ${scoreClass(c.last_performance)}">${scoreStr(c.last_performance)}</span>
-        </div>`;
+            return `<div class="client-item ${selectedClient?.id === c.id ? "active" : ""}" onclick="selectClient(${c.id})">
+      <div class="client-avatar">${c.name.slice(0, 2).toUpperCase()}${hs ? '<span class="schedule-dot"></span>' : ""}</div>
+      <div class="client-info"><div class="client-name">${escHtml(c.name)}</div><div class="client-url">${escHtml(c.url)}</div>${sl}</div>
+      <span class="client-score ${scoreClass(c.last_performance)}">${scoreStr(c.last_performance)}</span>
+    </div>`;
           })
           .join("");
       }
-
-      // ── Add client ─────────────────────────────────────────
       async function addClient() {
-        const name = document.getElementById("clientName").value.trim();
-        const url = document.getElementById("clientUrl").value.trim();
+        const name = document.getElementById("clientName").value.trim(),
+          url = document.getElementById("clientUrl").value.trim();
         if (!name || !url)
           return showToast("Name and URL are required", "error");
         const btn = document.getElementById("addClientBtn");
@@ -993,243 +1809,293 @@
           btn.innerHTML = "+ Add Client";
         }
       }
-
-      // ── Select client ──────────────────────────────────────
       async function selectClient(id) {
         selectedClient = clients.find((c) => c.id === id);
+        selectedCategory = null;
+        destroyAllCharts();
         renderClientList();
         await renderClientDetail();
       }
-
-      // ── Form factor toggle ─────────────────────────────────
       function setFormFactor(ff) {
         currentFormFactor = ff;
         document.querySelectorAll(".ff-btn").forEach((b) => {
-          const isThis = b.dataset.ff === ff;
-          b.classList.toggle("active", isThis);
-          b.classList.toggle("mobile-active", isThis && ff === "mobile");
-          b.classList.toggle("desktop-active", isThis && ff === "desktop");
+          const it = b.dataset.ff === ff;
+          b.classList.toggle("active", it);
+          b.classList.toggle("mobile-active", it && ff === "mobile");
+          b.classList.toggle("desktop-active", it && ff === "desktop");
         });
       }
 
-      // ── Render detail panel ────────────────────────────────
+      // ── Main detail panel ─────────────────────────────────────────────
       async function renderClientDetail() {
         const c = selectedClient;
         if (!c) return;
-
-        let audits = [];
+        currentAudits = [];
         try {
           const res = await fetch(`/api/clients/${c.id}/audits`);
-          audits = await res.json();
+          currentAudits = await res.json();
         } catch {}
+        const latest = currentAudits[0] || null;
 
-        const latest = audits[0] || null;
-
-        const scoreCards = [
-          { key: "performance", label: "Performance" },
-          { key: "accessibility", label: "Accessibility" },
-          { key: "best_practices", label: "Best Practices" },
-          { key: "seo", label: "SEO" },
-          { key: "pwa", label: "PWA" },
-        ]
-          .map(({ key, label }) => {
-            const v = latest?.[key];
-            return `
-        <div class="score-card">
-          <div class="score-value ${scoreClass(v)}">${scoreStr(v)}</div>
-          <div class="score-label">${label}</div>
-          <div class="progress-bar-wrap" style="margin-top:8px;">
-            <div class="progress-bar" style="width:${v ?? 0}%;background:${progressColor(v)};"></div>
-          </div>
-        </div>`;
+        const scoreCards = Object.values(CATEGORIES)
+          .map((cat) => {
+            const v = latest?.[cat.key];
+            return `<div class="score-card ${selectedCategory === cat.key ? "selected" : ""}" style="--card-color:${cat.color}" onclick="toggleCategory('${cat.key}')">
+      <div class="score-card-inner">
+        <div class="score-value ${scoreClass(v)}">${scoreStr(v)}</div>
+        <div class="score-label">${cat.label}</div>
+        <div class="progress-bar-wrap" style="margin-top:8px"><div class="progress-bar" style="width:${v ?? 0}%;background:${progressColor(v)}"></div></div>
+        <div class="score-hint">Click to view history</div>
+      </div>
+    </div>`;
           })
           .join("");
 
-        // History rows — include form factor badge + View Report button
-        const historyRows =
-          audits
-            .slice(0, 15)
-            .map((a) => {
-              const ts = new Date(a.audited_at).toLocaleString();
-              const statusBadge =
-                a.status === "running"
-                  ? "running"
-                  : a.status === "failed"
-                    ? "failed"
-                    : "ok";
-              const ffBadge = `<span class="ff-badge ff-${a.form_factor || "mobile"}">${a.form_factor === "desktop" ? "🖥" : "📱"} ${a.form_factor || "mobile"}</span>`;
-              const viewBtn =
-                a.status === "completed"
-                  ? `<button class="btn-teal btn" onclick="openInViewer(${a.id})" title="Open in Lighthouse Viewer">⬡ View</button>`
-                  : "—";
-              return `<tr>
-        <td>${ts}</td>
-        <td>${ffBadge}</td>
-        <td class="${scoreClass(a.performance)}">${scoreStr(a.performance)}</td>
-        <td class="${scoreClass(a.accessibility)}">${scoreStr(a.accessibility)}</td>
-        <td class="${scoreClass(a.best_practices)}">${scoreStr(a.best_practices)}</td>
-        <td class="${scoreClass(a.seo)}">${scoreStr(a.seo)}</td>
-        <td class="${scoreClass(a.pwa)}">${scoreStr(a.pwa)}</td>
-        <td><span class="badge badge-${statusBadge}">${a.status}</span></td>
-        <td>${viewBtn}</td>
-      </tr>`;
-            })
-            .join("") ||
-          `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem;">No audits yet — run one below.</td></tr>`;
-
-        // Schedule section
-        const presetBtns = PRESETS.map(
-          (p) => `
-      <div class="preset-btn ${c.schedule === p.cron ? "selected" : ""}" onclick="selectPreset('${p.cron}')">
-        <span class="preset-label">${p.label}</span>
-        <span class="preset-cron">${p.cron}</span>
-      </div>`,
+        const presetBtns = CRON_PRESETS.map(
+          (p) =>
+            `<div class="preset-btn ${c.schedule === p.cron ? "selected" : ""}" onclick="selectPreset('${p.cron}')"><span class="preset-label">${p.label}</span><span class="preset-cron">${p.cron}</span></div>`,
         ).join("");
-
-        const schedStatusHtml = c.schedule
+        const schedHtml = c.schedule
           ? `
-      <div class="schedule-status">
-        <div class="schedule-status-left">
-          ${
-            c.schedule_enabled && c.job_active
-              ? '<span class="schedule-active-dot"></span>'
-              : '<span style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;"></span>'
-          }
-          <div>
-            <div class="schedule-status-text">${c.schedule_enabled && c.job_active ? "Active — " : "Paused — "}${describeSchedule(c.schedule)}</div>
-            <div class="schedule-status-cron">${c.schedule}</div>
-          </div>
-        </div>
-        <div class="schedule-actions">
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.72rem;" onclick="toggleSchedule(${c.id})">${c.schedule_enabled ? "⏸ Pause" : "▶ Resume"}</button>
-          <button class="btn btn-danger" style="padding:5px 10px;font-size:0.72rem;" onclick="removeSchedule(${c.id})">✕ Clear</button>
-        </div>
-      </div>`
-          : `<div style="font-size:0.8rem;color:var(--muted);margin-top:0.75rem;">No schedule set. Pick a preset or enter a custom cron below.</div>`;
+    <div class="schedule-status">
+      <div class="schedule-status-left">
+        ${c.schedule_enabled && c.job_active ? '<span class="schedule-active-dot"></span>' : '<span style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0"></span>'}
+        <div><div class="schedule-status-text">${c.schedule_enabled && c.job_active ? "Active — " : "Paused — "}${descSched(c.schedule)}</div><div class="schedule-status-cron">${c.schedule}</div></div>
+      </div>
+      <div class="schedule-actions">
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:.72rem" onclick="toggleSchedule(${c.id})">${c.schedule_enabled ? "⏸ Pause" : "▶ Resume"}</button>
+        <button class="btn btn-danger" style="padding:5px 10px;font-size:.72rem" onclick="removeSchedule(${c.id})">✕ Clear</button>
+      </div>
+    </div>`
+          : `<div style="font-size:.8rem;color:var(--muted);margin-top:.75rem">No schedule set. Pick a preset or enter a custom cron below.</div>`;
 
         const lastAudit = latest
           ? `Last audited ${new Date(latest.audited_at).toLocaleString()}`
           : "Never audited";
 
         document.getElementById("rightPanel").innerHTML = `
-      <div class="panel">
-        <div class="audit-bar">
-          <div class="audit-info">
-            <div style="font-size:1rem;font-weight:700;">${escHtml(c.name)}</div>
-            <div class="audit-url">${escHtml(c.url)}</div>
-            <div class="audit-timestamp">${lastAudit}</div>
-          </div>
-
-          <!-- Form factor toggle -->
-          <div class="ff-toggle">
-            <button class="ff-btn mobile-active active" data-ff="mobile" onclick="setFormFactor('mobile')">📱 Mobile</button>
-            <button class="ff-btn" data-ff="desktop" onclick="setFormFactor('desktop')">🖥 Desktop</button>
-          </div>
-
-          <button class="btn btn-ghost" onclick="deleteClient(${c.id})">🗑 Remove</button>
-          <button class="btn btn-primary" id="runAuditBtn" onclick="runAudit(${c.id})" style="width:auto;">▶ Run Audit</button>
+    <div class="panel">
+      <div class="audit-bar">
+        <div class="audit-info">
+          <div style="font-size:1rem;font-weight:700">${escHtml(c.name)}</div>
+          <div class="audit-url">${escHtml(c.url)}</div>
+          <div class="audit-timestamp">${lastAudit}</div>
         </div>
-        <div class="score-grid">${scoreCards}</div>
+        <div class="ff-toggle">
+          <button class="ff-btn mobile-active active" data-ff="mobile" onclick="setFormFactor('mobile')">📱 Mobile</button>
+          <button class="ff-btn" data-ff="desktop" onclick="setFormFactor('desktop')">🖥 Desktop</button>
+        </div>
+        <button class="btn btn-ghost" onclick="deleteClient(${c.id})">🗑 Remove</button>
+        <button class="btn btn-primary" id="runAuditBtn" onclick="runAudit(${c.id})" style="width:auto">▶ Run Audit</button>
+      </div>
 
-        <!-- Schedule Section -->
-        <div class="schedule-section">
-          <div class="schedule-section-title"><span style="color:var(--purple);">◷</span> Auto-Schedule</div>
-          <div class="preset-grid">${presetBtns}</div>
-          <div class="field">
-            <label>Custom Cron Expression</label>
-            <div class="cron-input-row">
-              <input id="customCron" type="text" placeholder="0 9 * * 1-5"
-                     value="${escHtml(c.schedule || "")}" oninput="onCronInput(this.value)"/>
-              <button class="btn btn-purple" id="saveScheduleBtn" onclick="saveSchedule(${c.id})">Save</button>
+      <div class="score-grid" id="scoreGrid">${scoreCards}</div>
+
+      <!-- Date range bar (always visible once client selected) -->
+      <div class="date-range-bar" id="dateRangeBar">
+        <span class="date-range-label">📅 Range</span>
+        <button class="dr-preset ${DR.preset === "1d" ? "active" : ""}" data-preset="1d"  onclick="applyPreset('1d')">1D</button>
+        <button class="dr-preset ${DR.preset === "7d" ? "active" : ""}" data-preset="7d"  onclick="applyPreset('7d')">7D</button>
+        <button class="dr-preset ${DR.preset === "30d" ? "active" : ""}" data-preset="30d" onclick="applyPreset('30d')">30D</button>
+        <button class="dr-preset ${DR.preset === "all" ? "active" : ""}" data-preset="all" onclick="applyPreset('all')">All</button>
+
+        <!-- Custom calendar trigger -->
+        <div style="position:relative">
+          <button class="dr-custom-btn ${DR.preset === "custom" ? "active" : ""}" id="drCustomBtn" onclick="openCal()">
+            🗓 Custom
+          </button>
+          <!-- Calendar popup -->
+          <div class="cal-popup" id="calPopup">
+            <div class="cal-popup-months"><!-- rendered by renderCal() --></div>
+            <div class="cal-popup-footer">
+              <span class="cal-selected-display" id="calSelectedDisplay">Select start date</span>
+              <div class="cal-popup-actions">
+                <button class="cal-clear-btn" onclick="calClear()">Clear</button>
+                <button class="cal-apply-btn" id="calApplyBtn" onclick="calApply()" disabled>Apply</button>
+              </div>
             </div>
-            <div class="cron-hint">min &nbsp; hour &nbsp; day &nbsp; month &nbsp; weekday &nbsp;|&nbsp; e.g. <span style="color:var(--text2)">0 9 * * 1-5</span> = weekdays at 9am</div>
           </div>
-          ${schedStatusHtml}
         </div>
+
+        <span class="dr-range-display" id="drRangeDisplay">${rangeDisplayStr()}</span>
+        <span class="dr-count" id="drCount"></span>
       </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Audit History</span>
-          <span style="font-size:0.72rem;color:var(--muted);">Click ⬡ View to open in Lighthouse Viewer</span>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>Timestamp</th><th>Device</th><th>Perf</th><th>A11y</th>
-                <th>Best</th><th>SEO</th><th>PWA</th><th>Status</th><th>Report</th>
-              </tr>
-            </thead>
-            <tbody>${historyRows}</tbody>
-          </table>
-        </div>
+      <!-- Chart drawer -->
+      <div class="chart-drawer" id="chartDrawer">
+        <div class="chart-drawer-inner" id="chartDrawerInner"></div>
       </div>
-    `;
 
-        // Restore form factor toggle state
+      <div class="schedule-section">
+        <div class="schedule-section-title"><span style="color:var(--purple)">◷</span> Auto-Schedule</div>
+        <div class="preset-grid">${presetBtns}</div>
+        <div class="field">
+          <label>Custom Cron Expression</label>
+          <div class="cron-input-row">
+            <input id="customCron" type="text" placeholder="0 9 * * 1-5" value="${escHtml(c.schedule || "")}" oninput="onCronInput(this.value)"/>
+            <button class="btn btn-purple" id="saveScheduleBtn" onclick="saveSchedule(${c.id})">Save</button>
+          </div>
+          <div class="cron-hint">min &nbsp; hour &nbsp; day &nbsp; month &nbsp; weekday &nbsp;|&nbsp; e.g. <span style="color:var(--text2)">0 9 * * 1-5</span> = weekdays at 9am</div>
+        </div>
+        ${schedHtml}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Audit History</span>
+        <span style="font-size:.72rem;color:var(--muted)">Click ⬡ View to open in Lighthouse Viewer</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="history-table">
+          <thead><tr>
+            <th>Timestamp</th><th>Device</th><th>Perf</th><th>A11y</th>
+            <th>Best</th><th>SEO</th><th>PWA</th><th>Status</th><th>Report</th>
+          </tr></thead>
+          <tbody id="historyBody">${buildHistoryRows(filteredAudits().slice(0, 50))}</tbody>
+        </table>
+      </div>
+    </div>`;
+
         setFormFactor(currentFormFactor);
+        refreshDateUI();
+        if (selectedCategory) renderChartDrawer(selectedCategory);
       }
 
-      // ── Open in Lighthouse Viewer ──────────────────────────
-      async function openInViewer(auditId) {
-        const overlay = document.getElementById("viewerOverlay");
-        overlay.classList.add("show");
+      function buildHistoryRows(audits) {
+        if (!audits.length)
+          return `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem">No audits in this date range.</td></tr>`;
+        return audits
+          .map((a) => {
+            const ts = new Date(a.audited_at).toLocaleString();
+            const sb =
+              a.status === "running"
+                ? "running"
+                : a.status === "failed"
+                  ? "failed"
+                  : "ok";
+            const ffb = `<span class="ff-badge ff-${a.form_factor || "mobile"}">${a.form_factor === "desktop" ? "🖥" : "📱"} ${a.form_factor || "mobile"}</span>`;
+            const vb =
+              a.status === "completed"
+                ? `<button class="btn-teal btn" onclick="openInViewer(${a.id})">⬡ View</button>`
+                : "—";
+            return `<tr><td>${ts}</td><td>${ffb}</td>
+      <td class="${scoreClass(a.performance)}">${scoreStr(a.performance)}</td>
+      <td class="${scoreClass(a.accessibility)}">${scoreStr(a.accessibility)}</td>
+      <td class="${scoreClass(a.best_practices)}">${scoreStr(a.best_practices)}</td>
+      <td class="${scoreClass(a.seo)}">${scoreStr(a.seo)}</td>
+      <td class="${scoreClass(a.pwa)}">${scoreStr(a.pwa)}</td>
+      <td><span class="badge badge-${sb}">${a.status}</span></td>
+      <td>${vb}</td></tr>`;
+          })
+          .join("");
+      }
 
-        try {
-          // Fetch the full LHR JSON from our API
-          const res = await fetch(`/api/audits/${auditId}/report`);
-          if (!res.ok) throw new Error("Report not found");
-          const lhr = await res.json();
-
-          // Open the viewer
-          const viewerWin = window.open(
-            "https://googlechrome.github.io/lighthouse/viewer/",
-            "_blank",
-          );
-          if (!viewerWin) {
-            throw new Error(
-              "Popup blocked — please allow popups for this site",
+      // ── Chart drawer ──────────────────────────────────────────────────
+      function toggleCategory(catKey) {
+        if (selectedCategory === catKey) {
+          selectedCategory = null;
+          document.getElementById("chartDrawer").classList.remove("open");
+          document
+            .querySelectorAll(".score-card")
+            .forEach((el) => el.classList.remove("selected"));
+          destroyAllCharts();
+        } else {
+          selectedCategory = catKey;
+          document.querySelectorAll(".score-card").forEach((el, i) => {
+            el.classList.toggle(
+              "selected",
+              Object.keys(CATEGORIES)[i] === catKey,
             );
-          }
-
-          // The viewer listens for postMessage with { lhr }
-          // Try sending after load, with a fallback timeout
-          let sent = false;
-
-          const sendReport = () => {
-            if (sent) return;
-            sent = true;
-            viewerWin.postMessage({ lhr }, "https://googlechrome.github.io");
-            overlay.classList.remove("show");
-            showToast("Report sent to Lighthouse Viewer", "info");
-          };
-
-          // Listen for the viewer's ready signal
-          const handler = (e) => {
-            if (
-              e.source === viewerWin &&
-              e.origin === "https://googlechrome.github.io"
-            ) {
-              window.removeEventListener("message", handler);
-              clearTimeout(fallback);
-              sendReport();
-            }
-          };
-          window.addEventListener("message", handler);
-
-          // Fallback: send after 4s even if no ack (viewer usually loads in ~2s)
-          const fallback = setTimeout(() => {
-            window.removeEventListener("message", handler);
-            sendReport();
-          }, 4000);
-        } catch (err) {
-          overlay.classList.remove("show");
-          showToast(err.message, "error");
+          });
+          renderChartDrawer(catKey);
+          document.getElementById("chartDrawer").classList.add("open");
         }
       }
 
-      // ── Run audit ──────────────────────────────────────────
+      function renderChartDrawer(catKey) {
+        const cat = CATEGORIES[catKey];
+        const audits = [...filteredAudits()].reverse();
+        const valid = audits.filter(
+          (a) => a.status === "completed" && a[catKey] != null,
+        );
+
+        if (!valid.length) {
+          document.getElementById("chartDrawerInner").innerHTML =
+            `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:.85rem">No completed audit data in this date range for ${cat.label}.</div>`;
+          return;
+        }
+
+        const labels = valid.map((a) => {
+          const d = new Date(a.audited_at);
+          return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+        });
+        const scoreData = valid.map((a) => parseFloat(a[catKey]));
+        const isPerf = catKey === "performance";
+
+        let cwvHtml = "";
+        if (isPerf) {
+          cwvHtml = `<div class="cwv-title">⚡ Core Web Vitals</div>
+    <div class="cwv-grid">${CWV.map((m) => {
+      const latestVal =
+        [...valid].reverse().find((a) => a[m.key] != null)?.[m.key] ?? null;
+      const rating = cwvRating(m, latestVal);
+      const rl = {
+        good: "Good",
+        ni: "Needs Improvement",
+        poor: "Poor",
+        na: "No Data",
+      };
+      return `<div class="cwv-card">
+        <div class="cwv-card-top">
+          <div><div class="cwv-card-label">${m.abbr}</div><div style="font-size:.65rem;color:var(--muted);margin-top:1px">${m.label}</div></div>
+          <div style="text-align:right"><div class="cwv-card-value" style="color:${m.color}">${cwvFormat(m, latestVal)}</div><div class="cwv-card-rating rating-${rating}">${rl[rating]}</div></div>
+        </div>
+        <div class="cwv-spark-wrap"><canvas id="spark_${m.key}"></canvas></div>
+      </div>`;
+    }).join("")}</div>`;
+        }
+
+        document.getElementById("chartDrawerInner").innerHTML = `
+    <div class="chart-drawer-header">
+      <span class="chart-drawer-title" style="color:${cat.color}">${cat.label} — Historical Trend</span>
+      <button class="chart-close" onclick="toggleCategory('${catKey}')">✕ Close</button>
+    </div>
+    <div class="chart-main-wrap"><canvas id="mainTrendChart"></canvas></div>
+    ${cwvHtml}`;
+
+        buildLineChart(
+          "mainTrendChart",
+          labels,
+          [{ label: cat.label + " Score", data: scoreData, color: cat.color }],
+          { yMin: 0, yMax: 100, tooltipSuffix: "" },
+        );
+
+        if (isPerf) {
+          requestAnimationFrame(() => {
+            CWV.forEach((m) => {
+              const sd = valid.map((a) =>
+                a[m.key] == null
+                  ? null
+                  : parseFloat((a[m.key] * m.factor).toFixed(m.decimals)),
+              );
+              buildLineChart(
+                `spark_${m.key}`,
+                labels,
+                [{ label: m.abbr, data: sd, color: m.color }],
+                {
+                  sparkline: true,
+                  fill: true,
+                  tooltipSuffix: m.unit,
+                  decimals: m.decimals,
+                },
+              );
+            });
+          });
+        }
+      }
+
+      // ── Run audit ─────────────────────────────────────────────────────
       async function runAudit(clientId) {
         const btn = document.getElementById("runAuditBtn");
         if (!btn) return;
@@ -1259,12 +2125,59 @@
         }
       }
 
-      // ── Delete client ──────────────────────────────────────
+      // ── Viewer ────────────────────────────────────────────────────────
+      async function openInViewer(auditId) {
+        const overlay = document.getElementById("viewerOverlay");
+        overlay.classList.add("show");
+        try {
+          const res = await fetch(`/api/audits/${auditId}/report`);
+          if (!res.ok) throw new Error("Report not found");
+          const lhr = await res.json();
+          const vw = window.open(
+            "https://googlechrome.github.io/lighthouse/viewer/",
+            "_blank",
+          );
+          if (!vw)
+            throw new Error(
+              "Popup blocked — please allow popups for this site",
+            );
+          let sent = false;
+          const send = () => {
+            if (sent) return;
+            sent = true;
+            vw.postMessage({ lhr }, "https://googlechrome.github.io");
+            overlay.classList.remove("show");
+            showToast("Report sent to Lighthouse Viewer", "info");
+          };
+          const h = (e) => {
+            if (
+              e.source === vw &&
+              e.origin === "https://googlechrome.github.io"
+            ) {
+              window.removeEventListener("message", h);
+              clearTimeout(fb);
+              send();
+            }
+          };
+          window.addEventListener("message", h);
+          const fb = setTimeout(() => {
+            window.removeEventListener("message", h);
+            send();
+          }, 4000);
+        } catch (err) {
+          overlay.classList.remove("show");
+          showToast(err.message, "error");
+        }
+      }
+
+      // ── Delete client ─────────────────────────────────────────────────
       async function deleteClient(id) {
         if (!confirm("Remove this client and all its audit history?")) return;
         try {
+          destroyAllCharts();
           await fetch(`/api/clients/${id}`, { method: "DELETE" });
           selectedClient = null;
+          selectedCategory = null;
           document.getElementById("rightPanel").innerHTML =
             `<div class="panel"><div class="welcome"><div class="big-icon">🏠</div><h2>Select a client</h2><p>Choose a monitored site from the left panel to view scores and run audits.</p></div></div>`;
           showToast("Client removed");
@@ -1274,43 +2187,46 @@
         }
       }
 
-      // ── Schedule helpers ───────────────────────────────────
-      function selectPreset(cronExpr) {
-        const input = document.getElementById("customCron");
-        if (input) input.value = cronExpr;
-        document.querySelectorAll(".preset-btn").forEach((btn) => {
-          btn.classList.toggle(
-            "selected",
-            btn.querySelector(".preset-cron").textContent === cronExpr,
+      // ── Schedule helpers ──────────────────────────────────────────────
+      function selectPreset(e) {
+        const i = document.getElementById("customCron");
+        if (i) i.value = e;
+        document
+          .querySelectorAll(".preset-btn")
+          .forEach((b) =>
+            b.classList.toggle(
+              "selected",
+              b.querySelector(".preset-cron").textContent === e,
+            ),
           );
-        });
       }
-      function onCronInput(val) {
-        document.querySelectorAll(".preset-btn").forEach((btn) => {
-          btn.classList.toggle(
-            "selected",
-            btn.querySelector(".preset-cron").textContent === val.trim(),
+      function onCronInput(v) {
+        document
+          .querySelectorAll(".preset-btn")
+          .forEach((b) =>
+            b.classList.toggle(
+              "selected",
+              b.querySelector(".preset-cron").textContent === v.trim(),
+            ),
           );
-        });
       }
-      async function saveSchedule(clientId) {
-        const expression = document.getElementById("customCron")?.value.trim();
-        if (!expression)
-          return showToast("Enter a cron expression first", "error");
+      async function saveSchedule(id) {
+        const e = document.getElementById("customCron")?.value.trim();
+        if (!e) return showToast("Enter a cron expression first", "error");
         const btn = document.getElementById("saveScheduleBtn");
         if (btn) {
           btn.disabled = true;
           btn.textContent = "...";
         }
         try {
-          const res = await fetch(`/api/clients/${clientId}/schedule`, {
+          const res = await fetch(`/api/clients/${id}/schedule`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ expression, enabled: true }),
+            body: JSON.stringify({ expression: e, enabled: true }),
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          showToast(`Schedule set: ${describeSchedule(expression)}`, "info");
+          const d = await res.json();
+          if (!res.ok) throw new Error(d.error);
+          showToast(`Schedule set: ${descSched(e)}`, "info");
           await loadClients();
           await renderClientDetail();
         } catch (e) {
@@ -1321,29 +2237,26 @@
           }
         }
       }
-      async function toggleSchedule(clientId) {
+      async function toggleSchedule(id) {
         try {
-          const res = await fetch(`/api/clients/${clientId}/schedule/toggle`, {
+          const r = await fetch(`/api/clients/${id}/schedule/toggle`, {
             method: "PATCH",
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          showToast(
-            data.enabled ? "Schedule resumed" : "Schedule paused",
-            "info",
-          );
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error);
+          showToast(d.enabled ? "Schedule resumed" : "Schedule paused", "info");
           await loadClients();
           await renderClientDetail();
         } catch (e) {
           showToast(e.message, "error");
         }
       }
-      async function removeSchedule(clientId) {
+      async function removeSchedule(id) {
         try {
-          const res = await fetch(`/api/clients/${clientId}/schedule`, {
+          const r = await fetch(`/api/clients/${id}/schedule`, {
             method: "DELETE",
           });
-          if (!res.ok) throw new Error((await res.json()).error);
+          if (!r.ok) throw new Error((await r.json()).error);
           showToast("Schedule removed");
           await loadClients();
           await renderClientDetail();
@@ -1353,8 +2266,10 @@
       }
 
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape")
+        if (e.key === "Escape") {
           document.getElementById("viewerOverlay").classList.remove("show");
+          closeCal();
+        }
         if (
           e.key === "Enter" &&
           (e.target.id === "clientName" || e.target.id === "clientUrl")

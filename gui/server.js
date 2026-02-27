@@ -20,7 +20,6 @@ const pool = new Pool({
   database: process.env.DB_NAME || "lighthouse_db",
 });
 
-// ─── Cron job registry ───────────────────────────────────────────
 const activeJobs = new Map();
 
 async function waitForDb(retries = 10, delay = 3000) {
@@ -37,13 +36,11 @@ async function waitForDb(retries = 10, delay = 3000) {
   throw new Error("Could not connect to database");
 }
 
-// ─── Core audit runner ───────────────────────────────────────────
 async function runAuditForClient(clientId, formFactor = "mobile") {
   const clientResult = await pool.query("SELECT * FROM clients WHERE id = $1", [
     clientId,
   ]);
   if (!clientResult.rows.length) throw new Error("Client not found");
-
   const { url } = clientResult.rows[0];
   const endpoint = `${LIGHTHOUSE_URL}/audit?url=${encodeURIComponent(url)}&client_id=${clientId}&form_factor=${formFactor}`;
   const response = await fetch(endpoint, { timeout: 180000 });
@@ -52,7 +49,6 @@ async function runAuditForClient(clientId, formFactor = "mobile") {
   return data;
 }
 
-// ─── Scheduler ───────────────────────────────────────────────────
 function stopJob(clientId) {
   const existing = activeJobs.get(clientId);
   if (existing) {
@@ -98,13 +94,13 @@ async function initSchedules() {
   }
 }
 
-// ─── Clients ──────────────────────────────────────────────────────
+// ── Clients ──────────────────────────────────────────────────────
 app.get("/api/clients", async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT c.*,
-              (SELECT audited_at   FROM audits WHERE client_id = c.id ORDER BY audited_at DESC LIMIT 1) AS last_audited,
-              (SELECT performance  FROM audits WHERE client_id = c.id ORDER BY audited_at DESC LIMIT 1) AS last_performance
+              (SELECT audited_at  FROM audits WHERE client_id = c.id ORDER BY audited_at DESC LIMIT 1) AS last_audited,
+              (SELECT performance FROM audits WHERE client_id = c.id ORDER BY audited_at DESC LIMIT 1) AS last_performance
        FROM clients c ORDER BY c.created_at DESC`,
     );
     res.json(
@@ -143,14 +139,16 @@ app.delete("/api/clients/:id", async (req, res) => {
   }
 });
 
-// ─── Audits ───────────────────────────────────────────────────────
+// ── Audits ────────────────────────────────────────────────────────
 app.get("/api/clients/:id/audits", async (req, res) => {
   try {
-    // Exclude report_json from list — too large; fetched separately
+    // Include CWV metrics; exclude heavy report_json
     const result = await pool.query(
-      `SELECT id, client_id, form_factor, performance, accessibility,
-              best_practices, seo, pwa, status, error_message, audited_at
-       FROM audits WHERE client_id = $1 ORDER BY audited_at DESC LIMIT 20`,
+      `SELECT id, client_id, form_factor,
+              performance, accessibility, best_practices, seo, pwa,
+              fcp_ms, lcp_ms, tbt_ms, si_ms, tti_ms, cls,
+              status, error_message, audited_at
+       FROM audits WHERE client_id = $1 ORDER BY audited_at DESC LIMIT 50`,
       [req.params.id],
     );
     res.json(result.rows);
@@ -169,7 +167,6 @@ app.post("/api/clients/:id/audit", async (req, res) => {
   }
 });
 
-// GET full Lighthouse JSON report for a specific audit
 app.get("/api/audits/:id/report", async (req, res) => {
   try {
     const result = await pool.query(
@@ -186,7 +183,7 @@ app.get("/api/audits/:id/report", async (req, res) => {
   }
 });
 
-// ─── Schedule management ──────────────────────────────────────────
+// ── Schedule management ───────────────────────────────────────────
 app.put("/api/clients/:id/schedule", async (req, res) => {
   const clientId = parseInt(req.params.id);
   const { expression, enabled = true } = req.body;
@@ -270,7 +267,6 @@ app.get("/api/schedules", async (req, res) => {
   }
 });
 
-// ─── Dashboard ────────────────────────────────────────────────────
 app.get("/api/dashboard", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -278,9 +274,7 @@ app.get("/api/dashboard", async (req, res) => {
              a.performance, a.accessibility, a.best_practices, a.seo, a.pwa,
              a.status, a.audited_at
       FROM clients c
-      LEFT JOIN LATERAL (
-        SELECT * FROM audits WHERE client_id = c.id ORDER BY audited_at DESC LIMIT 1
-      ) a ON true
+      LEFT JOIN LATERAL (SELECT * FROM audits WHERE client_id = c.id ORDER BY audited_at DESC LIMIT 1) a ON true
       ORDER BY c.created_at DESC
     `);
     res.json(result.rows);
@@ -289,7 +283,6 @@ app.get("/api/dashboard", async (req, res) => {
   }
 });
 
-// ─── Boot ─────────────────────────────────────────────────────────
 (async () => {
   await waitForDb();
   await initSchedules();
