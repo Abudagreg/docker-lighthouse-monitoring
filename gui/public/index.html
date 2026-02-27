@@ -288,6 +288,24 @@
       .client-list {
         display: flex;
         flex-direction: column;
+        overflow-y: auto;
+        max-height: 360px;
+        min-height: 120px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border2) transparent;
+      }
+      .client-list::-webkit-scrollbar {
+        width: 4px;
+      }
+      .client-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .client-list::-webkit-scrollbar-thumb {
+        background: var(--border2);
+        border-radius: 99px;
+      }
+      .client-list::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
       }
       .client-item {
         padding: 1rem 1.25rem;
@@ -1124,6 +1142,113 @@
         border-radius: 99px;
         transition: width 0.5s ease;
       }
+      /* ── Client list search + filter ── */
+      .client-search-wrap {
+        padding: 0.75rem 1rem 0.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .client-search-box {
+        position: relative;
+      }
+      .client-search-box input {
+        width: 100%;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        padding: 8px 10px 8px 32px;
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .client-search-box input:focus {
+        border-color: var(--accent);
+      }
+      .client-search-box input::placeholder {
+        color: var(--muted);
+      }
+      .search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 0.8rem;
+        pointer-events: none;
+      }
+      .search-clear {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.9rem;
+        padding: 0 2px;
+        line-height: 1;
+        display: none;
+      }
+      .search-clear.visible {
+        display: block;
+      }
+      .search-clear:hover {
+        color: var(--text);
+      }
+      .platform-filter-row {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+      .pf-btn {
+        flex: 1;
+        padding: 4px 0;
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 0.72rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-align: center;
+      }
+      .pf-btn:hover {
+        color: var(--text2);
+        border-color: var(--border);
+      }
+      .pf-btn.active-all {
+        background: rgba(245, 166, 35, 0.1);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .pf-btn.active-mobile {
+        background: rgba(91, 141, 239, 0.1);
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      .pf-btn.active-desktop {
+        background: rgba(45, 212, 191, 0.1);
+        border-color: var(--teal);
+        color: var(--teal);
+      }
+      .pf-btn.active-both {
+        background: rgba(167, 139, 250, 0.1);
+        border-color: var(--purple);
+        color: var(--purple);
+      }
+      .client-list-empty-filter {
+        padding: 2rem 1rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
       /* ── Platform picker ── */
       .platform-toggle {
         display: grid;
@@ -1224,7 +1349,16 @@
       </div>
     </header>
     <main>
-      <div style="display: flex; flex-direction: column; gap: 1.5rem">
+      <div
+        style="
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          position: sticky;
+          top: 76px;
+          align-self: start;
+        "
+      >
         <div class="panel">
           <div class="panel-header">
             <span class="panel-title">Add Client</span>
@@ -1303,6 +1437,55 @@
               >0</span
             >
           </div>
+          <!-- Search + filter -->
+          <div class="client-search-wrap">
+            <div class="client-search-box">
+              <span class="search-icon">🔍</span>
+              <input
+                id="clientSearch"
+                type="text"
+                placeholder="Search by name or URL…"
+                oninput="onClientSearch(this.value)"
+              />
+              <button
+                class="search-clear"
+                id="searchClear"
+                onclick="clearClientSearch()"
+              >
+                ✕
+              </button>
+            </div>
+            <div class="platform-filter-row">
+              <button
+                class="pf-btn active-all"
+                data-pf="all"
+                onclick="setPlatformFilter('all')"
+              >
+                All
+              </button>
+              <button
+                class="pf-btn"
+                data-pf="mobile"
+                onclick="setPlatformFilter('mobile')"
+              >
+                📱 Mobile
+              </button>
+              <button
+                class="pf-btn"
+                data-pf="desktop"
+                onclick="setPlatformFilter('desktop')"
+              >
+                🖥 Desktop
+              </button>
+              <button
+                class="pf-btn"
+                data-pf="both"
+                onclick="setPlatformFilter('both')"
+              >
+                ⚡ Both
+              </button>
+            </div>
+          </div>
           <div class="client-list" id="clientList">
             <div class="empty-state">
               <div class="icon">📡</div>
@@ -1340,6 +1523,8 @@
         currentAudits = [];
       let currentFormFactor = "mobile",
         selectedCategory = null;
+      let clientSearchQuery = "",
+        clientPlatformFilter = "all";
 
       // Date range state
       // preset: '1d'|'7d'|'30d'|'all'|'custom'
@@ -1864,41 +2049,96 @@
           showToast("Failed to load clients", "error");
         }
       }
+      function getFilteredClients() {
+        const q = clientSearchQuery.toLowerCase();
+        return clients.filter((c) => {
+          const matchesSearch =
+            !q ||
+            c.name.toLowerCase().includes(q) ||
+            c.url.toLowerCase().includes(q);
+          const plat = c.platform || "both";
+          const matchesPlatform =
+            clientPlatformFilter === "all" || plat === clientPlatformFilter;
+          return matchesSearch && matchesPlatform;
+        });
+      }
       function renderClientList() {
         const el = document.getElementById("clientList");
         document.getElementById("clientCount").textContent = clients.length;
+
         if (!clients.length) {
           el.innerHTML = `<div class="empty-state"><div class="icon">📡</div><p>No clients yet.<br/>Add a site above to start monitoring.</p></div>`;
           return;
         }
-        el.innerHTML = clients
+
+        const filtered = getFilteredClients();
+
+        if (!filtered.length) {
+          el.innerHTML = `<div class="client-list-empty-filter">No clients match your search or filter.</div>`;
+          return;
+        }
+
+        const pbMap = {
+          mobile: "📱 Mobile",
+          desktop: "🖥 Desktop",
+          both: "⚡ Both",
+        };
+        const pbCls = {
+          mobile: "pb-mobile",
+          desktop: "pb-desktop",
+          both: "pb-both",
+        };
+        el.innerHTML = filtered
           .map((c) => {
             const hs = c.schedule && c.schedule_enabled;
             const sl = c.schedule
               ? `<div class="client-schedule-label">◷ ${descSched(c.schedule)}${!c.schedule_enabled ? " (paused)" : ""}</div>`
               : "";
-            const pbMap = {
-              mobile: "📱 Mobile",
-              desktop: "🖥 Desktop",
-              both: "⚡ Both",
-            };
-            const pbCls = {
-              mobile: "pb-mobile",
-              desktop: "pb-desktop",
-              both: "pb-both",
-            };
             const plat = c.platform || "both";
+            // Highlight matching text
+            const nameHtml = highlightMatch(escHtml(c.name), clientSearchQuery);
+            const urlHtml = highlightMatch(escHtml(c.url), clientSearchQuery);
             return `<div class="client-item ${selectedClient?.id === c.id ? "active" : ""}" onclick="selectClient(${c.id})">
       <div class="client-avatar">${c.name.slice(0, 2).toUpperCase()}${hs ? '<span class="schedule-dot"></span>' : ""}</div>
       <div class="client-info">
-        <div class="client-name">${escHtml(c.name)}</div>
-        <div class="client-url">${escHtml(c.url)}</div>
+        <div class="client-name">${nameHtml}</div>
+        <div class="client-url">${urlHtml}</div>
         <div style="margin-top:3px"><span class="platform-badge ${pbCls[plat]}">${pbMap[plat]}</span>${sl ? "&nbsp;" + sl : ""}</div>
       </div>
       <span class="client-score ${scoreClass(c.last_performance)}">${scoreStr(c.last_performance)}</span>
     </div>`;
           })
           .join("");
+      }
+      function highlightMatch(html, query) {
+        if (!query) return html;
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return html.replace(
+          new RegExp(`(${escaped})`, "gi"),
+          '<mark style="background:rgba(245,166,35,.25);color:var(--accent);border-radius:2px">$1</mark>',
+        );
+      }
+      function onClientSearch(val) {
+        clientSearchQuery = val.trim();
+        const clearBtn = document.getElementById("searchClear");
+        if (clearBtn) clearBtn.classList.toggle("visible", val.length > 0);
+        renderClientList();
+      }
+      function clearClientSearch() {
+        clientSearchQuery = "";
+        const inp = document.getElementById("clientSearch");
+        if (inp) inp.value = "";
+        const clearBtn = document.getElementById("searchClear");
+        if (clearBtn) clearBtn.classList.remove("visible");
+        renderClientList();
+      }
+      function setPlatformFilter(pf) {
+        clientPlatformFilter = pf;
+        document.querySelectorAll(".pf-btn").forEach((b) => {
+          const isThis = b.dataset.pf === pf;
+          b.className = "pf-btn" + (isThis ? " active-" + pf : "");
+        });
+        renderClientList();
       }
       async function addClient() {
         const name = document.getElementById("clientName").value.trim(),
