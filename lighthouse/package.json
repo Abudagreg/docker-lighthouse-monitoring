@@ -1,0 +1,15 @@
+{
+  "name": "lighthouse-service",
+  "version": "1.0.0",
+  "description": "Lighthouse audit service with Chromium",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "chrome-launcher": "^1.1.2",
+    "express": "^4.19.2",
+    "lighthouse": "^11.7.1",
+    "pg": "^8.12.0"
+  }
+}

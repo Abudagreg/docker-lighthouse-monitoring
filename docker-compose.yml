@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: lighthouse_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lighthouse_db
+      POSTGRES_USER: lighthouse
+      POSTGRES_PASSWORD: lighthouse_pass
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lighthouse -d lighthouse_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  lighthouse:
+    build: ./lighthouse
+    container_name: lighthouse_service
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: lighthouse
+      DB_PASSWORD: lighthouse_pass
+      DB_NAME: lighthouse_db
+      PORT: 3001
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+
+  gui:
+    build: ./gui
+    container_name: lighthouse_gui
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: lighthouse
+      DB_PASSWORD: lighthouse_pass
+      DB_NAME: lighthouse_db
+      LIGHTHOUSE_SERVICE_URL: http://lighthouse:3001
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+      lighthouse:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+volumes:
+  pg_data:

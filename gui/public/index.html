@@ -1,0 +1,1369 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lighthouse Monitor</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0c0f;
+        --surface: #111418;
+        --surface2: #181c22;
+        --border: #22272f;
+        --border2: #2e3540;
+        --accent: #f5a623;
+        --accent2: #e8891a;
+        --green: #3ecf8e;
+        --red: #f26b6b;
+        --blue: #5b8def;
+        --purple: #a78bfa;
+        --teal: #2dd4bf;
+        --muted: #5a6475;
+        --text: #d8dde6;
+        --text2: #9aa3b0;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Space Grotesk", sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(245, 166, 35, 0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(245, 166, 35, 0.02) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: 0;
+      }
+      header {
+        z-index: 10;
+        border-bottom: 1px solid var(--border);
+        padding: 0 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 60px;
+        background: rgba(17, 20, 24, 0.9);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        font-size: 0.95rem;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+      }
+      .logo-icon {
+        width: 28px;
+        height: 28px;
+        background: var(--accent);
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        font-size: 0.75rem;
+      }
+      .status-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        color: var(--green);
+        background: rgba(62, 207, 142, 0.08);
+        border: 1px solid rgba(62, 207, 142, 0.2);
+        padding: 4px 10px;
+        border-radius: 99px;
+      }
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        background: var(--green);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      main {
+        position: relative;
+        z-index: 1;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 1.5rem;
+        align-items: start;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .panel-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .panel-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .form-body {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .field label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text2);
+        margin-bottom: 6px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .field input,
+      .field select {
+        width: 100%;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        padding: 10px 12px;
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.82rem;
+        outline: none;
+        transition: border-color 0.2s;
+        appearance: none;
+      }
+      .field input:focus,
+      .field select:focus {
+        border-color: var(--accent);
+      }
+      .field input::placeholder {
+        color: var(--muted);
+      }
+      .field select option {
+        background: var(--surface2);
+      }
+
+      /* Buttons */
+      .btn {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 8px;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.18s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #0a0c0f;
+        width: 100%;
+        justify-content: center;
+      }
+      .btn-primary:hover {
+        background: var(--accent2);
+        transform: translateY(-1px);
+      }
+      .btn-primary:active {
+        transform: translateY(0);
+      }
+      .btn-primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--text2);
+        border: 1px solid var(--border2);
+        font-size: 0.78rem;
+        padding: 6px 12px;
+      }
+      .btn-ghost:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .btn-danger {
+        background: transparent;
+        color: var(--red);
+        border: 1px solid transparent;
+        padding: 4px 8px;
+        font-size: 0.78rem;
+      }
+      .btn-danger:hover {
+        background: rgba(242, 107, 107, 0.1);
+      }
+      .btn-purple {
+        background: rgba(167, 139, 250, 0.12);
+        color: var(--purple);
+        border: 1px solid rgba(167, 139, 250, 0.25);
+        font-size: 0.78rem;
+        padding: 6px 12px;
+      }
+      .btn-purple:hover {
+        background: rgba(167, 139, 250, 0.2);
+      }
+      .btn-teal {
+        background: rgba(45, 212, 191, 0.1);
+        color: var(--teal);
+        border: 1px solid rgba(45, 212, 191, 0.25);
+        font-size: 0.75rem;
+        padding: 4px 9px;
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+      .btn-teal:hover {
+        background: rgba(45, 212, 191, 0.18);
+      }
+
+      /* Form factor toggle */
+      .ff-toggle {
+        display: flex;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .ff-btn {
+        padding: 7px 14px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .ff-btn:hover {
+        color: var(--text2);
+      }
+      .ff-btn.active {
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: inset 0 0 0 1px var(--border2);
+      }
+      .ff-btn.active.mobile-active {
+        color: var(--blue);
+      }
+      .ff-btn.active.desktop-active {
+        color: var(--teal);
+      }
+
+      /* Client list */
+      .client-list {
+        display: flex;
+        flex-direction: column;
+      }
+      .client-item {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        transition: background 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .client-item:last-child {
+        border-bottom: none;
+      }
+      .client-item:hover {
+        background: var(--surface2);
+      }
+      .client-item.active {
+        background: rgba(245, 166, 35, 0.06);
+        border-left: 2px solid var(--accent);
+      }
+      .client-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        display: grid;
+        place-items: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--accent);
+        flex-shrink: 0;
+        font-family: "JetBrains Mono", monospace;
+        position: relative;
+      }
+      .schedule-dot {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--purple);
+        border: 2px solid var(--surface);
+      }
+      .client-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .client-name {
+        font-size: 0.88rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .client-url {
+        font-size: 0.72rem;
+        font-family: "JetBrains Mono", monospace;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .client-schedule-label {
+        font-size: 0.68rem;
+        color: var(--purple);
+        margin-top: 1px;
+      }
+      .client-score {
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        font-size: 0.88rem;
+      }
+
+      .empty-state {
+        padding: 3rem 1.5rem;
+        text-align: center;
+        color: var(--muted);
+      }
+      .empty-state .icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.75rem;
+      }
+      .empty-state p {
+        font-size: 0.85rem;
+        line-height: 1.6;
+      }
+
+      .right-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      /* Score grid */
+      .score-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1px;
+        background: var(--border);
+      }
+      .score-card {
+        background: var(--surface);
+        padding: 1.25rem 1rem;
+        text-align: center;
+        transition: background 0.2s;
+      }
+      .score-card:hover {
+        background: var(--surface2);
+      }
+      .score-value {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 2.2rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 6px;
+      }
+      .score-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .score-good {
+        color: var(--green);
+      }
+      .score-medium {
+        color: var(--accent);
+      }
+      .score-poor {
+        color: var(--red);
+      }
+      .score-none {
+        color: var(--muted);
+      }
+
+      .audit-bar {
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+      }
+      .audit-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .audit-url {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        color: var(--text2);
+      }
+      .audit-timestamp {
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* Schedule section */
+      .schedule-section {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .schedule-section-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .preset-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 1rem;
+      }
+      .preset-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 7px;
+        padding: 8px 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-align: center;
+      }
+      .preset-btn:hover {
+        border-color: var(--purple);
+        background: rgba(167, 139, 250, 0.06);
+      }
+      .preset-btn.selected {
+        border-color: var(--purple);
+        background: rgba(167, 139, 250, 0.1);
+      }
+      .preset-btn .preset-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text);
+        display: block;
+      }
+      .preset-btn .preset-cron {
+        font-size: 0.65rem;
+        font-family: "JetBrains Mono", monospace;
+        color: var(--muted);
+        display: block;
+        margin-top: 2px;
+      }
+      .cron-input-row {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+      }
+      .cron-input-row input {
+        flex: 1;
+      }
+      .cron-input-row .btn {
+        padding: 10px 14px;
+        font-size: 0.8rem;
+        width: auto;
+      }
+      .cron-hint {
+        font-size: 0.68rem;
+        color: var(--muted);
+        margin-top: 5px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .schedule-status {
+        margin-top: 1rem;
+        padding: 10px 12px;
+        background: var(--surface2);
+        border-radius: 8px;
+        border: 1px solid var(--border2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .schedule-status-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .schedule-active-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--purple);
+        animation: pulse 2s infinite;
+      }
+      .schedule-status-text {
+        font-size: 0.8rem;
+        color: var(--text2);
+      }
+      .schedule-status-cron {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        color: var(--purple);
+      }
+      .schedule-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      /* History table */
+      .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+      }
+      .history-table th {
+        padding: 10px 1rem;
+        text-align: left;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+      }
+      .history-table td {
+        padding: 9px 1rem;
+        border-bottom: 1px solid var(--border);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.76rem;
+      }
+      .history-table tr:last-child td {
+        border-bottom: none;
+      }
+      .history-table tr:hover td {
+        background: var(--surface2);
+      }
+
+      /* Form factor badge in table */
+      .ff-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 0.68rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 600;
+      }
+      .ff-mobile {
+        background: rgba(91, 141, 239, 0.12);
+        color: var(--blue);
+      }
+      .ff-desktop {
+        background: rgba(45, 212, 191, 0.1);
+        color: var(--teal);
+      }
+
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(245, 166, 35, 0.2);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: inline-block;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      #toast {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .toast-item {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 0.83rem;
+        min-width: 260px;
+        animation: slideIn 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .toast-item.success {
+        border-left: 3px solid var(--green);
+      }
+      .toast-item.error {
+        border-left: 3px solid var(--red);
+      }
+      .toast-item.info {
+        border-left: 3px solid var(--purple);
+      }
+      @keyframes slideIn {
+        from {
+          transform: translateX(20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 900px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+        .score-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .preset-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      .welcome {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 5rem 2rem;
+        text-align: center;
+        color: var(--muted);
+      }
+      .welcome .big-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.4;
+      }
+      .welcome h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text2);
+        margin-bottom: 0.5rem;
+      }
+      .welcome p {
+        font-size: 0.85rem;
+        max-width: 320px;
+        line-height: 1.7;
+      }
+
+      .badge {
+        display: inline-block;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        letter-spacing: 0.06em;
+      }
+      .badge-running {
+        background: rgba(91, 141, 239, 0.15);
+        color: var(--blue);
+      }
+      .badge-failed {
+        background: rgba(242, 107, 107, 0.12);
+        color: var(--red);
+      }
+      .badge-ok {
+        background: rgba(62, 207, 142, 0.12);
+        color: var(--green);
+      }
+
+      .progress-bar-wrap {
+        height: 3px;
+        background: var(--border);
+        border-radius: 99px;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+      .progress-bar {
+        height: 100%;
+        border-radius: 99px;
+        transition: width 0.5s ease;
+      }
+
+      /* Viewer loading overlay */
+      #viewerOverlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        background: rgba(10, 12, 15, 0.85);
+        backdrop-filter: blur(8px);
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      #viewerOverlay.show {
+        display: flex;
+      }
+      #viewerOverlay p {
+        color: var(--text2);
+        font-size: 0.9rem;
+      }
+      .big-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(45, 212, 191, 0.15);
+        border-top-color: var(--teal);
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">
+        <div class="logo-icon">⬡</div>
+        LIGHTHOUSE MONITOR
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>SYSTEM ONLINE
+      </div>
+    </header>
+
+    <main>
+      <!-- Left sidebar -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Add Client</span>
+          </div>
+          <div class="form-body">
+            <div class="field">
+              <label>Site Name</label>
+              <input id="clientName" type="text" placeholder="My Website" />
+            </div>
+            <div class="field">
+              <label>URL</label>
+              <input
+                id="clientUrl"
+                type="url"
+                placeholder="https://example.com"
+              />
+            </div>
+            <button
+              class="btn btn-primary"
+              id="addClientBtn"
+              onclick="addClient()"
+            >
+              + Add Client
+            </button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Monitored Sites</span>
+            <span
+              id="clientCount"
+              style="
+                font-size: 0.75rem;
+                color: var(--muted);
+                font-family: &quot;JetBrains Mono&quot;, monospace;
+              "
+              >0</span
+            >
+          </div>
+          <div class="client-list" id="clientList">
+            <div class="empty-state">
+              <div class="icon">📡</div>
+              <p>No clients yet.<br />Add a site above to start monitoring.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="right-panel" id="rightPanel">
+        <div class="panel">
+          <div class="welcome">
+            <div class="big-icon">🏠</div>
+            <h2>Select a client</h2>
+            <p>
+              Choose a monitored site from the left panel to view scores and run
+              audits.
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Viewer loading overlay -->
+    <div id="viewerOverlay">
+      <div class="big-spinner"></div>
+      <p>Opening Lighthouse Viewer…</p>
+      <p style="font-size: 0.75rem; color: var(--muted)">
+        Sending report via postMessage
+      </p>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+      let selectedClient = null;
+      let clients = [];
+      let currentFormFactor = "mobile"; // global toggle state
+
+      const PRESETS = [
+        { label: "Every hour", cron: "0 * * * *" },
+        { label: "Every 6h", cron: "0 */6 * * *" },
+        { label: "Every 12h", cron: "0 */12 * * *" },
+        { label: "Daily 9am", cron: "0 9 * * *" },
+        { label: "Daily midnight", cron: "0 0 * * *" },
+        { label: "Weekly Mon", cron: "0 9 * * 1" },
+      ];
+
+      // ── Toast ─────────────────────────────────────────────
+      function showToast(msg, type = "success") {
+        const el = document.createElement("div");
+        el.className = `toast-item ${type}`;
+        el.innerHTML = `<span>${type === "success" ? "✓" : type === "info" ? "◷" : "✕"}</span>${msg}`;
+        document.getElementById("toast").appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+      }
+
+      function scoreClass(v) {
+        if (v == null) return "score-none";
+        if (v >= 90) return "score-good";
+        if (v >= 50) return "score-medium";
+        return "score-poor";
+      }
+      function scoreStr(v) {
+        return v == null ? "—" : Math.round(v);
+      }
+      function progressColor(v) {
+        if (v == null) return "var(--border2)";
+        if (v >= 90) return "var(--green)";
+        if (v >= 50) return "var(--accent)";
+        return "var(--red)";
+      }
+      function describeSchedule(expr) {
+        const match = PRESETS.find((p) => p.cron === expr);
+        return match ? match.label : expr;
+      }
+      function escHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      // ── Load clients ───────────────────────────────────────
+      async function loadClients() {
+        try {
+          const res = await fetch("/api/clients");
+          clients = await res.json();
+          if (selectedClient)
+            selectedClient =
+              clients.find((c) => c.id === selectedClient.id) || null;
+          renderClientList();
+        } catch (e) {
+          showToast("Failed to load clients", "error");
+        }
+      }
+
+      function renderClientList() {
+        const el = document.getElementById("clientList");
+        document.getElementById("clientCount").textContent = clients.length;
+        if (!clients.length) {
+          el.innerHTML = `<div class="empty-state"><div class="icon">📡</div><p>No clients yet.<br/>Add a site above to start monitoring.</p></div>`;
+          return;
+        }
+        el.innerHTML = clients
+          .map((c) => {
+            const isActive = selectedClient?.id === c.id;
+            const hasSchedule = c.schedule && c.schedule_enabled;
+            const schedLbl = c.schedule
+              ? `<div class="client-schedule-label">◷ ${describeSchedule(c.schedule)}${!c.schedule_enabled ? " (paused)" : ""}</div>`
+              : "";
+            return `
+        <div class="client-item ${isActive ? "active" : ""}" onclick="selectClient(${c.id})">
+          <div class="client-avatar">
+            ${c.name.slice(0, 2).toUpperCase()}
+            ${hasSchedule ? '<span class="schedule-dot"></span>' : ""}
+          </div>
+          <div class="client-info">
+            <div class="client-name">${escHtml(c.name)}</div>
+            <div class="client-url">${escHtml(c.url)}</div>
+            ${schedLbl}
+          </div>
+          <span class="client-score ${scoreClass(c.last_performance)}">${scoreStr(c.last_performance)}</span>
+        </div>`;
+          })
+          .join("");
+      }
+
+      // ── Add client ─────────────────────────────────────────
+      async function addClient() {
+        const name = document.getElementById("clientName").value.trim();
+        const url = document.getElementById("clientUrl").value.trim();
+        if (!name || !url)
+          return showToast("Name and URL are required", "error");
+        const btn = document.getElementById("addClientBtn");
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Adding...';
+        try {
+          const res = await fetch("/api/clients", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, url }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          document.getElementById("clientName").value = "";
+          document.getElementById("clientUrl").value = "";
+          showToast(`"${name}" added!`);
+          await loadClients();
+        } catch (e) {
+          showToast(e.message, "error");
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = "+ Add Client";
+        }
+      }
+
+      // ── Select client ──────────────────────────────────────
+      async function selectClient(id) {
+        selectedClient = clients.find((c) => c.id === id);
+        renderClientList();
+        await renderClientDetail();
+      }
+
+      // ── Form factor toggle ─────────────────────────────────
+      function setFormFactor(ff) {
+        currentFormFactor = ff;
+        document.querySelectorAll(".ff-btn").forEach((b) => {
+          const isThis = b.dataset.ff === ff;
+          b.classList.toggle("active", isThis);
+          b.classList.toggle("mobile-active", isThis && ff === "mobile");
+          b.classList.toggle("desktop-active", isThis && ff === "desktop");
+        });
+      }
+
+      // ── Render detail panel ────────────────────────────────
+      async function renderClientDetail() {
+        const c = selectedClient;
+        if (!c) return;
+
+        let audits = [];
+        try {
+          const res = await fetch(`/api/clients/${c.id}/audits`);
+          audits = await res.json();
+        } catch {}
+
+        const latest = audits[0] || null;
+
+        const scoreCards = [
+          { key: "performance", label: "Performance" },
+          { key: "accessibility", label: "Accessibility" },
+          { key: "best_practices", label: "Best Practices" },
+          { key: "seo", label: "SEO" },
+          { key: "pwa", label: "PWA" },
+        ]
+          .map(({ key, label }) => {
+            const v = latest?.[key];
+            return `
+        <div class="score-card">
+          <div class="score-value ${scoreClass(v)}">${scoreStr(v)}</div>
+          <div class="score-label">${label}</div>
+          <div class="progress-bar-wrap" style="margin-top:8px;">
+            <div class="progress-bar" style="width:${v ?? 0}%;background:${progressColor(v)};"></div>
+          </div>
+        </div>`;
+          })
+          .join("");
+
+        // History rows — include form factor badge + View Report button
+        const historyRows =
+          audits
+            .slice(0, 15)
+            .map((a) => {
+              const ts = new Date(a.audited_at).toLocaleString();
+              const statusBadge =
+                a.status === "running"
+                  ? "running"
+                  : a.status === "failed"
+                    ? "failed"
+                    : "ok";
+              const ffBadge = `<span class="ff-badge ff-${a.form_factor || "mobile"}">${a.form_factor === "desktop" ? "🖥" : "📱"} ${a.form_factor || "mobile"}</span>`;
+              const viewBtn =
+                a.status === "completed"
+                  ? `<button class="btn-teal btn" onclick="openInViewer(${a.id})" title="Open in Lighthouse Viewer">⬡ View</button>`
+                  : "—";
+              return `<tr>
+        <td>${ts}</td>
+        <td>${ffBadge}</td>
+        <td class="${scoreClass(a.performance)}">${scoreStr(a.performance)}</td>
+        <td class="${scoreClass(a.accessibility)}">${scoreStr(a.accessibility)}</td>
+        <td class="${scoreClass(a.best_practices)}">${scoreStr(a.best_practices)}</td>
+        <td class="${scoreClass(a.seo)}">${scoreStr(a.seo)}</td>
+        <td class="${scoreClass(a.pwa)}">${scoreStr(a.pwa)}</td>
+        <td><span class="badge badge-${statusBadge}">${a.status}</span></td>
+        <td>${viewBtn}</td>
+      </tr>`;
+            })
+            .join("") ||
+          `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem;">No audits yet — run one below.</td></tr>`;
+
+        // Schedule section
+        const presetBtns = PRESETS.map(
+          (p) => `
+      <div class="preset-btn ${c.schedule === p.cron ? "selected" : ""}" onclick="selectPreset('${p.cron}')">
+        <span class="preset-label">${p.label}</span>
+        <span class="preset-cron">${p.cron}</span>
+      </div>`,
+        ).join("");
+
+        const schedStatusHtml = c.schedule
+          ? `
+      <div class="schedule-status">
+        <div class="schedule-status-left">
+          ${
+            c.schedule_enabled && c.job_active
+              ? '<span class="schedule-active-dot"></span>'
+              : '<span style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0;"></span>'
+          }
+          <div>
+            <div class="schedule-status-text">${c.schedule_enabled && c.job_active ? "Active — " : "Paused — "}${describeSchedule(c.schedule)}</div>
+            <div class="schedule-status-cron">${c.schedule}</div>
+          </div>
+        </div>
+        <div class="schedule-actions">
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.72rem;" onclick="toggleSchedule(${c.id})">${c.schedule_enabled ? "⏸ Pause" : "▶ Resume"}</button>
+          <button class="btn btn-danger" style="padding:5px 10px;font-size:0.72rem;" onclick="removeSchedule(${c.id})">✕ Clear</button>
+        </div>
+      </div>`
+          : `<div style="font-size:0.8rem;color:var(--muted);margin-top:0.75rem;">No schedule set. Pick a preset or enter a custom cron below.</div>`;
+
+        const lastAudit = latest
+          ? `Last audited ${new Date(latest.audited_at).toLocaleString()}`
+          : "Never audited";
+
+        document.getElementById("rightPanel").innerHTML = `
+      <div class="panel">
+        <div class="audit-bar">
+          <div class="audit-info">
+            <div style="font-size:1rem;font-weight:700;">${escHtml(c.name)}</div>
+            <div class="audit-url">${escHtml(c.url)}</div>
+            <div class="audit-timestamp">${lastAudit}</div>
+          </div>
+
+          <!-- Form factor toggle -->
+          <div class="ff-toggle">
+            <button class="ff-btn mobile-active active" data-ff="mobile" onclick="setFormFactor('mobile')">📱 Mobile</button>
+            <button class="ff-btn" data-ff="desktop" onclick="setFormFactor('desktop')">🖥 Desktop</button>
+          </div>
+
+          <button class="btn btn-ghost" onclick="deleteClient(${c.id})">🗑 Remove</button>
+          <button class="btn btn-primary" id="runAuditBtn" onclick="runAudit(${c.id})" style="width:auto;">▶ Run Audit</button>
+        </div>
+        <div class="score-grid">${scoreCards}</div>
+
+        <!-- Schedule Section -->
+        <div class="schedule-section">
+          <div class="schedule-section-title"><span style="color:var(--purple);">◷</span> Auto-Schedule</div>
+          <div class="preset-grid">${presetBtns}</div>
+          <div class="field">
+            <label>Custom Cron Expression</label>
+            <div class="cron-input-row">
+              <input id="customCron" type="text" placeholder="0 9 * * 1-5"
+                     value="${escHtml(c.schedule || "")}" oninput="onCronInput(this.value)"/>
+              <button class="btn btn-purple" id="saveScheduleBtn" onclick="saveSchedule(${c.id})">Save</button>
+            </div>
+            <div class="cron-hint">min &nbsp; hour &nbsp; day &nbsp; month &nbsp; weekday &nbsp;|&nbsp; e.g. <span style="color:var(--text2)">0 9 * * 1-5</span> = weekdays at 9am</div>
+          </div>
+          ${schedStatusHtml}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Audit History</span>
+          <span style="font-size:0.72rem;color:var(--muted);">Click ⬡ View to open in Lighthouse Viewer</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th><th>Device</th><th>Perf</th><th>A11y</th>
+                <th>Best</th><th>SEO</th><th>PWA</th><th>Status</th><th>Report</th>
+              </tr>
+            </thead>
+            <tbody>${historyRows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+        // Restore form factor toggle state
+        setFormFactor(currentFormFactor);
+      }
+
+      // ── Open in Lighthouse Viewer ──────────────────────────
+      async function openInViewer(auditId) {
+        const overlay = document.getElementById("viewerOverlay");
+        overlay.classList.add("show");
+
+        try {
+          // Fetch the full LHR JSON from our API
+          const res = await fetch(`/api/audits/${auditId}/report`);
+          if (!res.ok) throw new Error("Report not found");
+          const lhr = await res.json();
+
+          // Open the viewer
+          const viewerWin = window.open(
+            "https://googlechrome.github.io/lighthouse/viewer/",
+            "_blank",
+          );
+          if (!viewerWin) {
+            throw new Error(
+              "Popup blocked — please allow popups for this site",
+            );
+          }
+
+          // The viewer listens for postMessage with { lhr }
+          // Try sending after load, with a fallback timeout
+          let sent = false;
+
+          const sendReport = () => {
+            if (sent) return;
+            sent = true;
+            viewerWin.postMessage({ lhr }, "https://googlechrome.github.io");
+            overlay.classList.remove("show");
+            showToast("Report sent to Lighthouse Viewer", "info");
+          };
+
+          // Listen for the viewer's ready signal
+          const handler = (e) => {
+            if (
+              e.source === viewerWin &&
+              e.origin === "https://googlechrome.github.io"
+            ) {
+              window.removeEventListener("message", handler);
+              clearTimeout(fallback);
+              sendReport();
+            }
+          };
+          window.addEventListener("message", handler);
+
+          // Fallback: send after 4s even if no ack (viewer usually loads in ~2s)
+          const fallback = setTimeout(() => {
+            window.removeEventListener("message", handler);
+            sendReport();
+          }, 4000);
+        } catch (err) {
+          overlay.classList.remove("show");
+          showToast(err.message, "error");
+        }
+      }
+
+      // ── Run audit ──────────────────────────────────────────
+      async function runAudit(clientId) {
+        const btn = document.getElementById("runAuditBtn");
+        if (!btn) return;
+        const ff = currentFormFactor;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> Running ${ff}...`;
+        showToast(
+          `${ff === "desktop" ? "🖥" : "📱"} ${ff.charAt(0).toUpperCase() + ff.slice(1)} audit started…`,
+        );
+        try {
+          const res = await fetch(`/api/clients/${clientId}/audit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ form_factor: ff }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          showToast("Audit complete!");
+          await loadClients();
+          await renderClientDetail();
+        } catch (e) {
+          showToast("Audit failed: " + e.message, "error");
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = "▶ Run Audit";
+          }
+        }
+      }
+
+      // ── Delete client ──────────────────────────────────────
+      async function deleteClient(id) {
+        if (!confirm("Remove this client and all its audit history?")) return;
+        try {
+          await fetch(`/api/clients/${id}`, { method: "DELETE" });
+          selectedClient = null;
+          document.getElementById("rightPanel").innerHTML =
+            `<div class="panel"><div class="welcome"><div class="big-icon">🏠</div><h2>Select a client</h2><p>Choose a monitored site from the left panel to view scores and run audits.</p></div></div>`;
+          showToast("Client removed");
+          await loadClients();
+        } catch (e) {
+          showToast("Failed to delete", "error");
+        }
+      }
+
+      // ── Schedule helpers ───────────────────────────────────
+      function selectPreset(cronExpr) {
+        const input = document.getElementById("customCron");
+        if (input) input.value = cronExpr;
+        document.querySelectorAll(".preset-btn").forEach((btn) => {
+          btn.classList.toggle(
+            "selected",
+            btn.querySelector(".preset-cron").textContent === cronExpr,
+          );
+        });
+      }
+      function onCronInput(val) {
+        document.querySelectorAll(".preset-btn").forEach((btn) => {
+          btn.classList.toggle(
+            "selected",
+            btn.querySelector(".preset-cron").textContent === val.trim(),
+          );
+        });
+      }
+      async function saveSchedule(clientId) {
+        const expression = document.getElementById("customCron")?.value.trim();
+        if (!expression)
+          return showToast("Enter a cron expression first", "error");
+        const btn = document.getElementById("saveScheduleBtn");
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "...";
+        }
+        try {
+          const res = await fetch(`/api/clients/${clientId}/schedule`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expression, enabled: true }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          showToast(`Schedule set: ${describeSchedule(expression)}`, "info");
+          await loadClients();
+          await renderClientDetail();
+        } catch (e) {
+          showToast(e.message, "error");
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Save";
+          }
+        }
+      }
+      async function toggleSchedule(clientId) {
+        try {
+          const res = await fetch(`/api/clients/${clientId}/schedule/toggle`, {
+            method: "PATCH",
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          showToast(
+            data.enabled ? "Schedule resumed" : "Schedule paused",
+            "info",
+          );
+          await loadClients();
+          await renderClientDetail();
+        } catch (e) {
+          showToast(e.message, "error");
+        }
+      }
+      async function removeSchedule(clientId) {
+        try {
+          const res = await fetch(`/api/clients/${clientId}/schedule`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error((await res.json()).error);
+          showToast("Schedule removed");
+          await loadClients();
+          await renderClientDetail();
+        } catch (e) {
+          showToast(e.message, "error");
+        }
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape")
+          document.getElementById("viewerOverlay").classList.remove("show");
+        if (
+          e.key === "Enter" &&
+          (e.target.id === "clientName" || e.target.id === "clientUrl")
+        )
+          addClient();
+      });
+
+      loadClients();
+      setInterval(loadClients, 30000);
+    </script>
+  </body>
+</html>
