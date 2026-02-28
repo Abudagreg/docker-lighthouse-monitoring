@@ -23,6 +23,35 @@ const pool = new Pool({
   database: process.env.DB_NAME || "lighthouse_db",
 });
 
+// ── Audit queue — one Chrome at a time ───────────────────────────
+// Concurrent Chrome instances crash each other in a container.
+// All requests go into this queue and are processed serially.
+let queueRunning = false;
+const auditQueue = [];
+
+function enqueue(task) {
+  return new Promise((resolve, reject) => {
+    auditQueue.push({ task, resolve, reject });
+    drainQueue();
+  });
+}
+
+async function drainQueue() {
+  if (queueRunning || auditQueue.length === 0) return;
+  queueRunning = true;
+  const { task, resolve, reject } = auditQueue.shift();
+  console.log(`📋 Queue: running audit (${auditQueue.length} remaining)`);
+  try {
+    resolve(await task());
+  } catch (err) {
+    reject(err);
+  } finally {
+    queueRunning = false;
+    drainQueue(); // process next
+  }
+}
+
+// ── DB helpers ────────────────────────────────────────────────────
 async function waitForDb(retries = 10, delay = 3000) {
   for (let i = 0; i < retries; i++) {
     try {
@@ -37,6 +66,7 @@ async function waitForDb(retries = 10, delay = 3000) {
   throw new Error("Could not connect to database");
 }
 
+// ── Lighthouse config per form factor ─────────────────────────────
 function getLighthouseConfig(formFactor) {
   if (formFactor === "desktop") {
     return {
@@ -82,31 +112,17 @@ function getLighthouseConfig(formFactor) {
   };
 }
 
-// Extract a numeric audit value safely
 function auditVal(lhr, key) {
   const v = lhr.audits?.[key]?.numericValue;
   return v !== undefined && v !== null && !isNaN(v) ? v : null;
 }
 
-app.get("/health", (req, res) =>
-  res.json({ status: "ok", service: "lighthouse" }),
-);
-
-app.get("/audit", async (req, res) => {
-  const { url, client_id } = req.query;
-  const formFactor = req.query.form_factor === "desktop" ? "desktop" : "mobile";
-
-  if (!url)
-    return res.status(400).json({ error: "`url` query param is required" });
-  try {
-    new URL(url);
-  } catch {
-    return res.status(400).json({ error: "Invalid URL format" });
-  }
-
-  let chrome;
+// ── Core audit function (runs inside the queue) ───────────────────
+async function runAudit(url, formFactor, client_id) {
+  let chrome = null;
   let auditId = null;
 
+  // Create a pending audit row
   if (client_id) {
     try {
       const result = await pool.query(
@@ -131,6 +147,7 @@ app.get("/audit", async (req, res) => {
         "--disable-dev-shm-usage",
         "--disable-setuid-sandbox",
         "--no-zygote",
+        "--single-process", // helps stability in containers
       ],
     });
 
@@ -158,7 +175,6 @@ app.get("/audit", async (req, res) => {
     const lhr = runnerResult.lhr;
     const { categories } = lhr;
 
-    // Category scores (0–100)
     const scores = {
       performance: Math.round((categories.performance?.score || 0) * 100),
       accessibility: Math.round((categories.accessibility?.score || 0) * 100),
@@ -169,7 +185,6 @@ app.get("/audit", async (req, res) => {
       pwa: Math.round((categories.pwa?.score || 0) * 100),
     };
 
-    // Core Web Vitals & performance sub-metrics
     const metrics = {
       fcp_ms: auditVal(lhr, "first-contentful-paint"),
       lcp_ms: auditVal(lhr, "largest-contentful-paint"),
@@ -179,6 +194,7 @@ app.get("/audit", async (req, res) => {
       cls: auditVal(lhr, "cumulative-layout-shift"),
     };
 
+    // Persist results
     if (auditId) {
       await pool.query(
         `UPDATE audits SET
@@ -228,19 +244,15 @@ app.get("/audit", async (req, res) => {
       auditId = ins.rows[0].id;
     }
 
-    console.log(
-      `✅ Audit complete [${formFactor}] for ${url}:`,
-      scores,
-      metrics,
-    );
-    res.json({
+    console.log(`✅ Audit complete [${formFactor}] for ${url}:`, scores);
+    return {
       success: true,
       url,
       form_factor: formFactor,
       scores,
       metrics,
       audit_id: auditId,
-    });
+    };
   } catch (err) {
     console.error(`❌ Audit failed for ${url}:`, err.message);
     if (auditId) {
@@ -251,10 +263,55 @@ app.get("/audit", async (req, res) => {
         )
         .catch(() => {});
     }
-    res.status(500).json({ success: false, error: err.message });
+    throw err;
   } finally {
-    if (chrome && typeof chrome.kill === "function")
-      await chrome.kill().catch(() => {});
+    // Safely kill Chrome — guard against undefined or missing kill()
+    if (chrome) {
+      try {
+        if (typeof chrome.kill === "function") {
+          await chrome.kill();
+        }
+      } catch (killErr) {
+        console.warn("⚠️  Chrome kill warning:", killErr.message);
+      }
+      chrome = null;
+    }
+  }
+}
+
+// ── Health ─────────────────────────────────────────────────────────
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "lighthouse",
+    queue_length: auditQueue.length,
+    queue_running: queueRunning,
+  });
+});
+
+// ── Audit endpoint — immediately enqueues, returns when done ───────
+app.get("/audit", async (req, res) => {
+  const { url, client_id } = req.query;
+  const formFactor = req.query.form_factor === "desktop" ? "desktop" : "mobile";
+
+  if (!url)
+    return res.status(400).json({ error: "`url` query param is required" });
+  try {
+    new URL(url);
+  } catch {
+    return res.status(400).json({ error: "Invalid URL format" });
+  }
+
+  const position = auditQueue.length + (queueRunning ? 1 : 0);
+  if (position > 0) {
+    console.log(`📋 Queuing [${formFactor}] ${url} — position ${position + 1}`);
+  }
+
+  try {
+    const result = await enqueue(() => runAudit(url, formFactor, client_id));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
