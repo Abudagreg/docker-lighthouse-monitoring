@@ -1343,6 +1343,146 @@
         background: rgba(245, 166, 35, 0.1);
         color: var(--accent);
       }
+      /* timezone picker */
+      .tz-wrap {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+      }
+      .tz-select-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 1px;
+      }
+      .tz-select-btn:hover .nav-clock-time {
+        color: var(--accent);
+      }
+      .tz-badge {
+        font-size: 0.6rem;
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        color: var(--accent);
+        background: rgba(245, 166, 35, 0.1);
+        border: 1px solid rgba(245, 166, 35, 0.2);
+        padding: 1px 5px;
+        border-radius: 4px;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .tz-badge:hover {
+        background: rgba(245, 166, 35, 0.2);
+      }
+      .tz-dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        z-index: 200;
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 10px;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+        padding: 0.5rem;
+        display: none;
+        min-width: 220px;
+        max-height: 320px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border2) transparent;
+      }
+      .tz-dropdown.open {
+        display: block;
+      }
+      .tz-search {
+        width: 100%;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        padding: 6px 10px;
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        outline: none;
+        margin-bottom: 0.4rem;
+      }
+      .tz-search:focus {
+        border-color: var(--accent);
+      }
+      .tz-group-label {
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 4px 8px 2px;
+      }
+      .tz-option {
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        color: var(--text2);
+        transition: background 0.12s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      .tz-option:hover {
+        background: var(--surface2);
+        color: var(--text);
+      }
+      .tz-option.active {
+        background: rgba(245, 166, 35, 0.08);
+        color: var(--accent);
+      }
+      .tz-option-offset {
+        font-size: 0.65rem;
+        color: var(--muted);
+      }
+      /* scrollable history panel */
+      .history-scroll {
+        overflow-y: auto;
+        max-height: 420px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border2) transparent;
+      }
+      .history-scroll::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      .history-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .history-scroll::-webkit-scrollbar-thumb {
+        background: var(--border2);
+        border-radius: 99px;
+      }
+      /* delete audit btn */
+      .btn-del-audit {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.8rem;
+        padding: 2px 5px;
+        border-radius: 4px;
+        transition: all 0.15s;
+        line-height: 1;
+      }
+      .btn-del-audit:hover {
+        color: var(--red);
+        background: rgba(242, 107, 107, 0.1);
+      }
       /* locked FF toggle */
       .ff-btn.locked {
         opacity: 0.4;
@@ -1381,9 +1521,28 @@
         LIGHTHOUSE MONITOR
       </div>
       <div style="display: flex; align-items: center; gap: 1.25rem">
-        <div class="nav-clock">
-          <span class="nav-clock-time" id="navTime">--:--:--</span>
-          <span class="nav-clock-date" id="navDate">--- --, ----</span>
+        <div class="tz-wrap" id="tzWrap">
+          <button
+            class="tz-select-btn"
+            onclick="toggleTzDropdown(event)"
+            title="Click to change timezone"
+          >
+            <span class="nav-clock-time" id="navTime">--:--:--</span>
+            <span class="nav-clock-date" id="navDate">--- --, ----</span>
+          </button>
+          <span class="tz-badge" id="tzBadge" onclick="toggleTzDropdown(event)"
+            >UTC</span
+          >
+          <div class="tz-dropdown" id="tzDropdown">
+            <input
+              class="tz-search"
+              type="text"
+              placeholder="Search timezone…"
+              oninput="filterTzList(this.value)"
+              id="tzSearch"
+            />
+            <div id="tzList"></div>
+          </div>
         </div>
         <div class="status-pill">
           <span class="status-dot"></span>SYSTEM ONLINE
@@ -1825,6 +1984,12 @@
     </div>`;
           })
           .join("");
+      }
+      function refreshLastAuditLabel() {
+        const el = document.querySelector(".audit-timestamp");
+        if (!el || !currentAudits.length) return;
+        const latest = currentAudits[0];
+        el.innerHTML = `Last audited ${formatInTz(new Date(latest.audited_at))}`;
       }
       function refreshHistoryTable() {
         const tbody = document.getElementById("historyBody");
@@ -2371,7 +2536,7 @@
           : `<div style="font-size:.8rem;color:var(--muted);margin-top:.75rem">No schedule set. Pick a preset or enter a custom cron below.</div>`;
 
         const lastAudit = latest
-          ? `Last audited ${new Date(latest.audited_at).toLocaleString()}`
+          ? `Last audited ${formatInTz(new Date(latest.audited_at))}`
           : "Never audited";
 
         document.getElementById("rightPanel").innerHTML = `
@@ -2447,11 +2612,11 @@
         <span class="panel-title">Audit History</span>
         <span style="font-size:.72rem;color:var(--muted)">Click ⬡ View to open in Lighthouse Viewer</span>
       </div>
-      <div style="overflow-x:auto">
+      <div class="history-scroll">
         <table class="history-table">
           <thead><tr>
             <th>Timestamp</th><th>Device</th><th>Perf</th><th>A11y</th>
-            <th>Best</th><th>SEO</th><th>PWA</th><th>Status</th><th>Report</th>
+            <th>Best</th><th>SEO</th><th>PWA</th><th>Status</th><th>Report</th><th></th>
           </tr></thead>
           <tbody id="historyBody">${buildHistoryRows(filteredAudits().slice(0, 50))}</tbody>
         </table>
@@ -2475,10 +2640,10 @@
 
       function buildHistoryRows(audits) {
         if (!audits.length)
-          return `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem">No audits in this date range.</td></tr>`;
+          return `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:2rem">No audits in this date range.</td></tr>`;
         return audits
           .map((a) => {
-            const ts = new Date(a.audited_at).toLocaleString();
+            const ts = formatInTz(new Date(a.audited_at));
             const sb =
               a.status === "running"
                 ? "running"
@@ -2490,16 +2655,35 @@
               a.status === "completed"
                 ? `<button class="btn-teal btn" onclick="openInViewer(${a.id})">⬡ View</button>`
                 : "—";
-            return `<tr><td>${ts}</td><td>${ffb}</td>
+            return `<tr>
+      <td>${ts}</td><td>${ffb}</td>
       <td class="${scoreClass(a.performance)}">${scoreStr(a.performance)}</td>
       <td class="${scoreClass(a.accessibility)}">${scoreStr(a.accessibility)}</td>
       <td class="${scoreClass(a.best_practices)}">${scoreStr(a.best_practices)}</td>
       <td class="${scoreClass(a.seo)}">${scoreStr(a.seo)}</td>
       <td class="${scoreClass(a.pwa)}">${scoreStr(a.pwa)}</td>
       <td><span class="badge badge-${sb}">${a.status}</span></td>
-      <td>${vb}</td></tr>`;
+      <td>${vb}</td>
+      <td><button class="btn-del-audit" onclick="deleteAudit(${a.id})" title="Delete this audit">🗑</button></td>
+    </tr>`;
           })
           .join("");
+      }
+      async function deleteAudit(auditId) {
+        if (!confirm("Delete this audit record?")) return;
+        try {
+          const res = await fetch(`/api/audits/${auditId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error((await res.json()).error);
+          currentAudits = currentAudits.filter((a) => a.id !== auditId);
+          refreshHistoryTable();
+          refreshScoreCards();
+          if (selectedCategory) renderChartDrawer(selectedCategory);
+          showToast("Audit deleted", "info");
+        } catch (e) {
+          showToast("Failed to delete audit: " + e.message, "error");
+        }
       }
 
       // ── Chart drawer ──────────────────────────────────────────────────
@@ -2791,24 +2975,176 @@
       loadClients();
       setInterval(loadClients, 30000);
 
-      // ── Real-time clock ────────────────────────────────────────────
+      // ── Timezone system ───────────────────────────────────────────
+      const TZ_LIST = [
+        {
+          group: "Local",
+          zones: [{ id: "local", label: "Browser Local", abbr: "LOCAL" }],
+        },
+        { group: "UTC", zones: [{ id: "UTC", label: "UTC", abbr: "UTC" }] },
+        {
+          group: "Europe",
+          zones: [
+            { id: "Europe/London", label: "London", abbr: "GMT/BST" },
+            { id: "Europe/Paris", label: "Paris/CET", abbr: "CET/CEST" },
+            { id: "Europe/Berlin", label: "Berlin", abbr: "CET/CEST" },
+            { id: "Europe/Copenhagen", label: "Copenhagen", abbr: "CET/CEST" },
+            { id: "Europe/Amsterdam", label: "Amsterdam", abbr: "CET/CEST" },
+            { id: "Europe/Madrid", label: "Madrid", abbr: "CET/CEST" },
+            { id: "Europe/Rome", label: "Rome", abbr: "CET/CEST" },
+            { id: "Europe/Stockholm", label: "Stockholm", abbr: "CET/CEST" },
+            { id: "Europe/Helsinki", label: "Helsinki", abbr: "EET/EEST" },
+            { id: "Europe/Moscow", label: "Moscow", abbr: "MSK" },
+          ],
+        },
+        {
+          group: "Asia & Pacific",
+          zones: [
+            { id: "Asia/Manila", label: "Manila/PH", abbr: "PHT" },
+            { id: "Asia/Singapore", label: "Singapore", abbr: "SGT" },
+            { id: "Asia/Hong_Kong", label: "Hong Kong", abbr: "HKT" },
+            { id: "Asia/Shanghai", label: "China", abbr: "CST" },
+            { id: "Asia/Tokyo", label: "Tokyo", abbr: "JST" },
+            { id: "Asia/Seoul", label: "Seoul", abbr: "KST" },
+            { id: "Asia/Dubai", label: "Dubai", abbr: "GST" },
+            { id: "Asia/Kolkata", label: "India", abbr: "IST" },
+            { id: "Asia/Bangkok", label: "Bangkok", abbr: "ICT" },
+            { id: "Australia/Sydney", label: "Sydney", abbr: "AEST/AEDT" },
+          ],
+        },
+        {
+          group: "Americas",
+          zones: [
+            { id: "America/New_York", label: "New York", abbr: "ET" },
+            { id: "America/Chicago", label: "Chicago", abbr: "CT" },
+            { id: "America/Denver", label: "Denver", abbr: "MT" },
+            { id: "America/Los_Angeles", label: "Los Angeles", abbr: "PT" },
+            { id: "America/Sao_Paulo", label: "São Paulo", abbr: "BRT" },
+            { id: "America/Toronto", label: "Toronto", abbr: "ET" },
+            { id: "America/Vancouver", label: "Vancouver", abbr: "PT" },
+          ],
+        },
+        {
+          group: "Africa & Middle East",
+          zones: [
+            { id: "Africa/Cairo", label: "Cairo", abbr: "EET" },
+            { id: "Africa/Nairobi", label: "Nairobi", abbr: "EAT" },
+            { id: "Africa/Johannesburg", label: "Johannesburg", abbr: "SAST" },
+            { id: "Asia/Riyadh", label: "Riyadh", abbr: "AST" },
+          ],
+        },
+      ];
+      // Flatten for search
+      const TZ_FLAT = TZ_LIST.flatMap((g) =>
+        g.zones.map((z) => ({ ...z, group: g.group })),
+      );
+
+      let currentTz = localStorage.getItem("lh_tz") || "local";
+
+      function getTzAbbr() {
+        const z = TZ_FLAT.find((t) => t.id === currentTz);
+        return z ? z.abbr : currentTz;
+      }
+      function formatInTz(date, showTz = true) {
+        const opts = {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+        };
+        const tzOpts =
+          currentTz === "local" ? opts : { ...opts, timeZone: currentTz };
+        const str = date.toLocaleString([], tzOpts);
+        if (!showTz) return str;
+        const abbr = getTzAbbr();
+        return `${str} <span style="font-size:.7em;color:var(--muted);font-weight:600">${abbr}</span>`;
+      }
       function updateClock() {
         const now = new Date();
         const timeEl = document.getElementById("navTime");
         const dateEl = document.getElementById("navDate");
+        const badgeEl = document.getElementById("tzBadge");
+        const opts = currentTz === "local" ? {} : { timeZone: currentTz };
         if (timeEl)
           timeEl.textContent = now.toLocaleTimeString([], {
+            ...opts,
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
           });
         if (dateEl)
           dateEl.textContent = now.toLocaleDateString([], {
+            ...opts,
             weekday: "short",
             month: "short",
             day: "numeric",
             year: "numeric",
           });
+        if (badgeEl) badgeEl.textContent = getTzAbbr();
+      }
+      function toggleTzDropdown(e) {
+        e.stopPropagation();
+        const dd = document.getElementById("tzDropdown");
+        const isOpen = dd.classList.contains("open");
+        dd.classList.toggle("open", !isOpen);
+        if (!isOpen) {
+          renderTzList("");
+          setTimeout(() => document.getElementById("tzSearch")?.focus(), 50);
+          document.addEventListener("mousedown", tzOutsideClick, {
+            once: true,
+          });
+        }
+      }
+      function tzOutsideClick(e) {
+        const wrap = document.getElementById("tzWrap");
+        if (wrap && !wrap.contains(e.target)) {
+          document.getElementById("tzDropdown")?.classList.remove("open");
+        } else {
+          document.addEventListener("mousedown", tzOutsideClick, {
+            once: true,
+          });
+        }
+      }
+      function filterTzList(q) {
+        renderTzList(q);
+      }
+      function renderTzList(q) {
+        const list = document.getElementById("tzList");
+        if (!list) return;
+        const lq = q.toLowerCase();
+        let html = "";
+        TZ_LIST.forEach((group) => {
+          const zones = group.zones.filter(
+            (z) =>
+              !lq ||
+              z.label.toLowerCase().includes(lq) ||
+              z.abbr.toLowerCase().includes(lq) ||
+              z.id.toLowerCase().includes(lq),
+          );
+          if (!zones.length) return;
+          html += `<div class="tz-group-label">${group.group}</div>`;
+          zones.forEach((z) => {
+            html += `<div class="tz-option ${currentTz === z.id ? "active" : ""}" onclick="selectTz('${z.id}')">
+        <span>${z.label}</span>
+        <span class="tz-option-offset">${z.abbr}</span>
+      </div>`;
+          });
+        });
+        list.innerHTML =
+          html ||
+          '<div style="padding:.5rem 1rem;color:var(--muted);font-size:.78rem">No results</div>';
+      }
+      function selectTz(tzId) {
+        currentTz = tzId;
+        localStorage.setItem("lh_tz", tzId);
+        document.getElementById("tzDropdown")?.classList.remove("open");
+        updateClock();
+        // Refresh history timestamps and last audit label
+        refreshHistoryTable();
+        refreshLastAuditLabel();
+        showToast("Timezone: " + getTzAbbr(), "info");
       }
       updateClock();
       setInterval(updateClock, 1000);

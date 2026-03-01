@@ -192,6 +192,20 @@ app.post("/api/clients/:id/audit", async (req, res) => {
   }
 });
 
+app.delete("/api/audits/:id", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "DELETE FROM audits WHERE id = $1 RETURNING id",
+      [req.params.id],
+    );
+    if (!result.rows.length)
+      return res.status(404).json({ error: "Audit not found" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/audits/:id/report", async (req, res) => {
   try {
     const result = await pool.query(
