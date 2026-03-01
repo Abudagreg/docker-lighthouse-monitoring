@@ -22,6 +22,7 @@ services:
     build: ./lighthouse
     container_name: lighthouse_service
     restart: unless-stopped
+    shm_size: "1gb"
     environment:
       DB_HOST: db
       DB_PORT: 5432

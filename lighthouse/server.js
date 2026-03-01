@@ -141,13 +141,14 @@ async function runAudit(url, formFactor, client_id) {
     chrome = await chromeLauncher.launch({
       chromePath: process.env.CHROME_PATH || "/usr/bin/chromium",
       chromeFlags: [
-        "--headless",
+        "--headless=new", // new headless mode — supports screenshots
         "--no-sandbox",
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
         "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage", // use /tmp instead of /dev/shm to avoid OOM
+        "--disable-gpu",
         "--no-zygote",
-        "--single-process", // helps stability in containers
+        "--hide-scrollbars",
+        "--mute-audio",
       ],
     });
 
