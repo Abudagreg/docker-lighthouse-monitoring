@@ -438,7 +438,7 @@
       /* ── Score grid ── */
       .score-grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 1px;
         background: var(--border);
       }
@@ -1448,6 +1448,92 @@
         font-size: 0.65rem;
         color: var(--muted);
       }
+      /* insights panel */
+      .insights-section {
+        padding: 1.25rem 1.5rem 1.5rem;
+        border-top: 1px solid var(--border);
+      }
+      .insights-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .insights-loading {
+        color: var(--muted);
+        font-size: 0.82rem;
+        padding: 0.5rem 0;
+      }
+      .insights-group-label {
+        font-size: 0.67rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 1rem 0 0.4rem;
+      }
+      .insight-item {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.7rem 0.9rem;
+        margin-bottom: 0.4rem;
+        cursor: default;
+        transition: border-color 0.15s;
+      }
+      .insight-item:hover {
+        border-color: var(--border2);
+      }
+      .insight-item-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.25rem;
+      }
+      .insight-score-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .insight-title {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text);
+        flex: 1;
+      }
+      .insight-savings {
+        font-size: 0.72rem;
+        color: var(--accent);
+        font-family: "JetBrains Mono", monospace;
+        white-space: nowrap;
+      }
+      .insight-desc {
+        font-size: 0.73rem;
+        color: var(--muted);
+        line-height: 1.5;
+        margin-top: 0.1rem;
+      }
+      .insight-display-val {
+        font-size: 0.72rem;
+        color: var(--text2);
+        font-family: "JetBrains Mono", monospace;
+        margin-top: 0.3rem;
+      }
+      .insights-empty {
+        font-size: 0.8rem;
+        color: var(--green);
+        padding: 0.4rem 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
       /* scrollable history panel */
       .history-scroll {
         overflow-y: auto;
@@ -1788,7 +1874,6 @@
           color: "#a78bfa",
         },
         seo: { label: "SEO", key: "seo", color: "#3ecf8e" },
-        pwa: { label: "PWA", key: "pwa", color: "#2dd4bf" },
       };
       const CWV = [
         {
@@ -2148,10 +2233,12 @@
         }
         renderCal();
       }
+      let _calHoverTimer = null;
       function calHover(y, m, d) {
         if (CAL.pickFrom && !CAL.pickTo) {
           CAL.hovering = new Date(y, m, d);
-          renderCal();
+          if (_calHoverTimer) clearTimeout(_calHoverTimer);
+          _calHoverTimer = setTimeout(() => renderCal(), 40);
         }
       }
       function updateCalFooter() {
@@ -2616,7 +2703,7 @@
         <table class="history-table">
           <thead><tr>
             <th>Timestamp</th><th>Device</th><th>Perf</th><th>A11y</th>
-            <th>Best</th><th>SEO</th><th>PWA</th><th>Status</th><th>Report</th><th></th>
+            <th>Best</th><th>SEO</th><th>Status</th><th>Report</th><th></th>
           </tr></thead>
           <tbody id="historyBody">${buildHistoryRows(filteredAudits().slice(0, 50))}</tbody>
         </table>
@@ -2640,7 +2727,7 @@
 
       function buildHistoryRows(audits) {
         if (!audits.length)
-          return `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:2rem">No audits in this date range.</td></tr>`;
+          return `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem">No audits in this date range.</td></tr>`;
         return audits
           .map((a) => {
             const ts = formatInTz(new Date(a.audited_at));
@@ -2661,7 +2748,6 @@
       <td class="${scoreClass(a.accessibility)}">${scoreStr(a.accessibility)}</td>
       <td class="${scoreClass(a.best_practices)}">${scoreStr(a.best_practices)}</td>
       <td class="${scoreClass(a.seo)}">${scoreStr(a.seo)}</td>
-      <td class="${scoreClass(a.pwa)}">${scoreStr(a.pwa)}</td>
       <td><span class="badge badge-${sb}">${a.status}</span></td>
       <td>${vb}</td>
       <td><button class="btn-del-audit" onclick="deleteAudit(${a.id})" title="Delete this audit">🗑</button></td>
@@ -2723,18 +2809,36 @@
 
         const labels = valid.map((a) => {
           const d = new Date(a.audited_at);
-          return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+          const opts = currentTz === "local" ? {} : { timeZone: currentTz };
+          const month = d.toLocaleDateString([], { ...opts, month: "numeric" });
+          const day = d.toLocaleDateString([], { ...opts, day: "numeric" });
+          const time = d.toLocaleTimeString([], {
+            ...opts,
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+          return `${month}/${day} ${time}`;
         });
         const scoreData = valid.map((a) => parseFloat(a[catKey]));
         const isPerf = catKey === "performance";
 
         let cwvHtml = "";
         if (isPerf) {
-          cwvHtml = `<div class="cwv-title">⚡ Core Web Vitals</div>
+          // Compute average for each CWV metric across all valid audits in range
+          function avgCwv(key) {
+            const vals = valid.map((a) => a[key]).filter((v) => v != null);
+            if (!vals.length) return null;
+            return vals.reduce((s, v) => s + parseFloat(v), 0) / vals.length;
+          }
+          const cwvCount = valid.length;
+          cwvHtml = `<div class="cwv-title" style="display:flex;align-items:center;gap:8px">
+      ⚡ Core Web Vitals
+      <span style="font-size:.65rem;color:var(--muted);font-weight:400">avg of ${cwvCount} audit${cwvCount === 1 ? "" : "s"}</span>
+    </div>
     <div class="cwv-grid">${CWV.map((m) => {
-      const latestVal =
-        [...valid].reverse().find((a) => a[m.key] != null)?.[m.key] ?? null;
-      const rating = cwvRating(m, latestVal);
+      const avgVal = avgCwv(m.key);
+      const rating = cwvRating(m, avgVal);
       const rl = {
         good: "Good",
         ni: "Needs Improvement",
@@ -2743,8 +2847,15 @@
       };
       return `<div class="cwv-card">
         <div class="cwv-card-top">
-          <div><div class="cwv-card-label">${m.abbr}</div><div style="font-size:.65rem;color:var(--muted);margin-top:1px">${m.label}</div></div>
-          <div style="text-align:right"><div class="cwv-card-value" style="color:${m.color}">${cwvFormat(m, latestVal)}</div><div class="cwv-card-rating rating-${rating}">${rl[rating]}</div></div>
+          <div>
+            <div class="cwv-card-label">${m.abbr}</div>
+            <div style="font-size:.65rem;color:var(--muted);margin-top:1px">${m.label}</div>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:2px">avg</div>
+          </div>
+          <div style="text-align:right">
+            <div class="cwv-card-value" style="color:${m.color}">${cwvFormat(m, avgVal)}</div>
+            <div class="cwv-card-rating rating-${rating}">${rl[rating]}</div>
+          </div>
         </div>
         <div class="cwv-spark-wrap"><canvas id="spark_${m.key}"></canvas></div>
       </div>`;
@@ -2757,7 +2868,11 @@
       <button class="chart-close" onclick="toggleCategory('${catKey}')">✕ Close</button>
     </div>
     <div class="chart-main-wrap"><canvas id="mainTrendChart"></canvas></div>
-    ${cwvHtml}`;
+    ${cwvHtml}
+    <div class="insights-section">
+      <div class="insights-title">🔍 Insights <span style="font-weight:400;font-size:.65rem">from last audit</span></div>
+      <div id="insightsBody"><div class="insights-loading">Loading insights…</div></div>
+    </div>`;
 
         buildLineChart(
           "mainTrendChart",
@@ -2787,6 +2902,107 @@
               );
             });
           });
+        }
+
+        // Fetch insights from latest completed audit in range
+        const latestAudit = valid[valid.length - 1]; // valid is oldest-first, last = most recent
+        if (latestAudit) loadInsights(latestAudit.id, catKey);
+      }
+
+      // Category key mapping lighthouse → report JSON key
+      const CAT_KEY_MAP = {
+        performance: "performance",
+        accessibility: "accessibility",
+        best_practices: "best-practices",
+        seo: "seo",
+      };
+
+      async function loadInsights(auditId, catKey) {
+        const el = document.getElementById("insightsBody");
+        if (!el) return;
+        try {
+          const res = await fetch(`/api/audits/${auditId}/report`);
+          if (!res.ok) throw new Error("Report not found");
+          const lhr = await res.json();
+          const lhrCatKey = CAT_KEY_MAP[catKey];
+          const cat = lhr.categories?.[lhrCatKey];
+          if (!cat) {
+            el.innerHTML =
+              '<div class="insights-loading">No data available.</div>';
+            return;
+          }
+
+          // Get all audit refs for this category
+          const refs = cat.auditRefs || [];
+          const items = refs
+            .map((r) => ({ ...lhr.audits?.[r.id], _weight: r.weight ?? 0 }))
+            .filter(
+              (a) =>
+                a &&
+                a.id &&
+                a.scoreDisplayMode !== "notApplicable" &&
+                a.scoreDisplayMode !== "manual" &&
+                a.scoreDisplayMode !== "informative" &&
+                a.score !== null &&
+                a.score !== undefined &&
+                a.score < 1,
+            )
+            .sort((a, b) => (a.score ?? 1) - (b.score ?? 1));
+
+          if (!items.length) {
+            el.innerHTML =
+              '<div class="insights-empty">✅ No issues found — all audits passed!</div>';
+            return;
+          }
+
+          // Split into opportunities (have savings) vs diagnostics
+          const opps = items.filter((a) => a.details?.type === "opportunity");
+          const diags = items.filter((a) => a.details?.type !== "opportunity");
+
+          function scoreColor(s) {
+            if (s === null || s === undefined) return "var(--muted)";
+            if (s >= 0.9) return "var(--green)";
+            if (s >= 0.5) return "var(--accent)";
+            return "var(--red)";
+          }
+          function renderItems(arr) {
+            return arr
+              .map((a) => {
+                const savings = a.details?.overallSavingsMs
+                  ? `<span class="insight-savings">~${Math.round(a.details.overallSavingsMs)}ms</span>`
+                  : a.details?.overallSavingsBytes
+                    ? `<span class="insight-savings">~${Math.round(a.details.overallSavingsBytes / 1024)} KiB</span>`
+                    : "";
+                const dispVal = a.displayValue
+                  ? `<div class="insight-display-val">${escHtml(a.displayValue)}</div>`
+                  : "";
+                const desc = a.description
+                  ? `<div class="insight-desc">${escHtml(a.description.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"))}</div>`
+                  : "";
+                return `<div class="insight-item">
+          <div class="insight-item-header">
+            <span class="insight-score-dot" style="background:${scoreColor(a.score)}"></span>
+            <span class="insight-title">${escHtml(a.title)}</span>
+            ${savings}
+          </div>
+          ${dispVal}${desc}
+        </div>`;
+              })
+              .join("");
+          }
+
+          let html = "";
+          if (opps.length) {
+            html += `<div class="insights-group-label">⚡ Opportunities</div>${renderItems(opps)}`;
+          }
+          if (diags.length) {
+            html += `<div class="insights-group-label">🔧 Diagnostics</div>${renderItems(diags)}`;
+          }
+          el.innerHTML = html;
+        } catch (e) {
+          if (document.getElementById("insightsBody"))
+            document.getElementById("insightsBody").innerHTML =
+              `<div class="insights-loading">Could not load insights.</div>`;
         }
       }
 
@@ -3047,16 +3263,17 @@
       }
       function formatInTz(date, showTz = true) {
         const opts = {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-          year: "numeric",
-          month: "numeric",
-          day: "numeric",
+          hour12: false,
         };
         const tzOpts =
           currentTz === "local" ? opts : { ...opts, timeZone: currentTz };
-        const str = date.toLocaleString([], tzOpts);
+        const str = date.toLocaleString("en-GB", tzOpts).replace(",", "");
         if (!showTz) return str;
         const abbr = getTzAbbr();
         return `${str} <span style="font-size:.7em;color:var(--muted);font-weight:600">${abbr}</span>`;

@@ -9,7 +9,7 @@
   "dependencies": {
     "chrome-launcher": "^1.1.2",
     "express": "^4.19.2",
-    "lighthouse": "^11.7.1",
+    "lighthouse": "^13.0.3",
     "pg": "^8.12.0"
   }
 }

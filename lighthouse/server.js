@@ -164,7 +164,6 @@ async function runAudit(url, formFactor, client_id) {
           "accessibility",
           "best-practices",
           "seo",
-          "pwa",
         ],
       },
       {
@@ -183,7 +182,7 @@ async function runAudit(url, formFactor, client_id) {
         (categories["best-practices"]?.score || 0) * 100,
       ),
       seo: Math.round((categories.seo?.score || 0) * 100),
-      pwa: Math.round((categories.pwa?.score || 0) * 100),
+      pwa: null, // removed in Lighthouse 13
     };
 
     const metrics = {
