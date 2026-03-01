@@ -86,6 +86,42 @@
         place-items: center;
         font-size: 0.75rem;
       }
+      .nav-clock {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        font-family: "JetBrains Mono", monospace;
+        line-height: 1.3;
+      }
+      .nav-clock-time {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: 0.06em;
+      }
+      .nav-clock-date {
+        font-size: 0.65rem;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+      /* avg badge on score card */
+      .score-avg-badge {
+        font-size: 0.58rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: rgba(90, 100, 117, 0.15);
+        border-radius: 4px;
+        padding: 1px 5px;
+        margin-top: 5px;
+        display: inline-block;
+      }
+      .score-count {
+        font-size: 0.62rem;
+        color: var(--muted);
+        margin-top: 2px;
+      }
       .status-pill {
         display: flex;
         align-items: center;
@@ -1344,8 +1380,14 @@
         <div class="logo-icon">⬡</div>
         LIGHTHOUSE MONITOR
       </div>
-      <div class="status-pill">
-        <span class="status-dot"></span>SYSTEM ONLINE
+      <div style="display: flex; align-items: center; gap: 1.25rem">
+        <div class="nav-clock">
+          <span class="nav-clock-time" id="navTime">--:--:--</span>
+          <span class="nav-clock-date" id="navDate">--- --, ----</span>
+        </div>
+        <div class="status-pill">
+          <span class="status-dot"></span>SYSTEM ONLINE
+        </div>
       </div>
     </header>
     <main>
@@ -1529,7 +1571,19 @@
       // Date range state
       // preset: '1d'|'7d'|'30d'|'all'|'custom'
       // from/to: Date | null  (inclusive, whole-day boundaries)
-      const DR = { preset: "all", from: null, to: null };
+      // Default to today (1d)
+      function _startOfDay(d) {
+        const r = new Date(d);
+        r.setHours(0, 0, 0, 0);
+        return r;
+      }
+      function _endOfDay(d) {
+        const r = new Date(d);
+        r.setHours(23, 59, 59, 999);
+        return r;
+      }
+      const _now = new Date();
+      const DR = { preset: "1d", from: _startOfDay(_now), to: _endOfDay(_now) };
 
       // Calendar picker state
       const CAL = {
@@ -1688,6 +1742,7 @@
         } // 'all'
         closeCal();
         refreshDateUI();
+        refreshScoreCards();
         if (selectedCategory) renderChartDrawer(selectedCategory);
         refreshHistoryTable();
       }
@@ -1728,6 +1783,42 @@
           const n = filteredAudits().length;
           cnt.textContent = n + " audit" + (n === 1 ? "" : "s");
         }
+      }
+      function refreshScoreCards() {
+        const grid = document.getElementById("scoreGrid");
+        if (!grid || !selectedClient) return;
+        const completedAudits = filteredAudits().filter(
+          (a) => a.status === "completed",
+        );
+        const auditCount = completedAudits.length;
+        function avgScore(key) {
+          const vals = completedAudits
+            .map((a) => a[key])
+            .filter((v) => v != null);
+          if (!vals.length) return null;
+          return Math.round(
+            vals.reduce((s, v) => s + parseFloat(v), 0) / vals.length,
+          );
+        }
+        grid.innerHTML = Object.values(CATEGORIES)
+          .map((cat) => {
+            const v = avgScore(cat.key);
+            const countLabel =
+              auditCount > 0
+                ? `<div class="score-count">avg of ${auditCount} audit${auditCount === 1 ? "" : "s"}</div>`
+                : "";
+            return `<div class="score-card ${selectedCategory === cat.key ? "selected" : ""}" style="--card-color:${cat.color}" onclick="toggleCategory('${cat.key}')">
+      <div class="score-card-inner">
+        <div class="score-value ${scoreClass(v)}">${scoreStr(v)}</div>
+        <div class="score-label">${cat.label}</div>
+        <span class="score-avg-badge">avg</span>
+        <div class="progress-bar-wrap" style="margin-top:6px"><div class="progress-bar" style="width:${v ?? 0}%;background:${progressColor(v)}"></div></div>
+        ${countLabel}
+        <div class="score-hint">Click to view history</div>
+      </div>
+    </div>`;
+          })
+          .join("");
       }
       function refreshHistoryTable() {
         const tbody = document.getElementById("historyBody");
@@ -1914,6 +2005,7 @@
         DR.to = endOfDay(CAL.pickTo);
         closeCal();
         refreshDateUI();
+        refreshScoreCards();
         if (selectedCategory) renderChartDrawer(selectedCategory);
         refreshHistoryTable();
       }
@@ -2204,14 +2296,48 @@
         } catch {}
         const latest = currentAudits[0] || null;
 
+        // Reset date range to 1d when switching clients so it always starts fresh
+        if (
+          DR.preset !== "1d" &&
+          DR.preset !== "7d" &&
+          DR.preset !== "30d" &&
+          DR.preset !== "custom"
+        ) {
+          const now = new Date();
+          DR.preset = "1d";
+          DR.from = startOfDay(now);
+          DR.to = endOfDay(now);
+        }
+
+        // Compute averages across all completed audits in current date range
+        const completedAudits = filteredAudits().filter(
+          (a) => a.status === "completed",
+        );
+        const auditCount = completedAudits.length;
+        function avgScore(key) {
+          const vals = completedAudits
+            .map((a) => a[key])
+            .filter((v) => v != null);
+          if (!vals.length) return null;
+          return Math.round(
+            vals.reduce((s, v) => s + parseFloat(v), 0) / vals.length,
+          );
+        }
+
         const scoreCards = Object.values(CATEGORIES)
           .map((cat) => {
-            const v = latest?.[cat.key];
+            const v = avgScore(cat.key);
+            const countLabel =
+              auditCount > 0
+                ? `<div class="score-count">avg of ${auditCount} audit${auditCount === 1 ? "" : "s"}</div>`
+                : "";
             return `<div class="score-card ${selectedCategory === cat.key ? "selected" : ""}" style="--card-color:${cat.color}" onclick="toggleCategory('${cat.key}')">
       <div class="score-card-inner">
         <div class="score-value ${scoreClass(v)}">${scoreStr(v)}</div>
         <div class="score-label">${cat.label}</div>
-        <div class="progress-bar-wrap" style="margin-top:8px"><div class="progress-bar" style="width:${v ?? 0}%;background:${progressColor(v)}"></div></div>
+        <span class="score-avg-badge">avg</span>
+        <div class="progress-bar-wrap" style="margin-top:6px"><div class="progress-bar" style="width:${v ?? 0}%;background:${progressColor(v)}"></div></div>
+        ${countLabel}
         <div class="score-hint">Click to view history</div>
       </div>
     </div>`;
@@ -2656,6 +2782,28 @@
 
       loadClients();
       setInterval(loadClients, 30000);
+
+      // ── Real-time clock ────────────────────────────────────────────
+      function updateClock() {
+        const now = new Date();
+        const timeEl = document.getElementById("navTime");
+        const dateEl = document.getElementById("navDate");
+        if (timeEl)
+          timeEl.textContent = now.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+        if (dateEl)
+          dateEl.textContent = now.toLocaleDateString([], {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+      }
+      updateClock();
+      setInterval(updateClock, 1000);
     </script>
   </body>
 </html>
