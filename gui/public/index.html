@@ -1571,7 +1571,7 @@
       // Date range state
       // preset: '1d'|'7d'|'30d'|'all'|'custom'
       // from/to: Date | null  (inclusive, whole-day boundaries)
-      // Default to today (1d)
+      // Default to last 7 days
       function _startOfDay(d) {
         const r = new Date(d);
         r.setHours(0, 0, 0, 0);
@@ -1583,7 +1583,13 @@
         return r;
       }
       const _now = new Date();
-      const DR = { preset: "1d", from: _startOfDay(_now), to: _endOfDay(_now) };
+      const _7ago = new Date(_now);
+      _7ago.setDate(_7ago.getDate() - 6);
+      const DR = {
+        preset: "7d",
+        from: _startOfDay(_7ago),
+        to: _endOfDay(_now),
+      };
 
       // Calendar picker state
       const CAL = {
@@ -2298,14 +2304,16 @@
 
         // Reset date range to 1d when switching clients so it always starts fresh
         if (
-          DR.preset !== "1d" &&
           DR.preset !== "7d" &&
+          DR.preset !== "1d" &&
           DR.preset !== "30d" &&
           DR.preset !== "custom"
         ) {
           const now = new Date();
-          DR.preset = "1d";
-          DR.from = startOfDay(now);
+          const _f = new Date(now);
+          _f.setDate(_f.getDate() - 6);
+          DR.preset = "7d";
+          DR.from = startOfDay(_f);
           DR.to = endOfDay(now);
         }
 
