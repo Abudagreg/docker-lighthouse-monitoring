@@ -758,11 +758,11 @@
       .chart-drawer {
         overflow: hidden;
         max-height: 0;
-        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: max-height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         border-top: 0px solid var(--border);
       }
       .chart-drawer.open {
-        max-height: 1000px;
+        max-height: 4000px;
         border-top-width: 1px;
       }
       .chart-drawer-inner {
@@ -1450,8 +1450,25 @@
       }
       /* insights panel */
       .insights-section {
-        padding: 1.25rem 1.5rem 1.5rem;
+        padding: 1.25rem 1.5rem 0;
         border-top: 1px solid var(--border);
+        max-height: 420px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border2) transparent;
+      }
+      #insightsBody {
+        padding-bottom: 1.5rem;
+      }
+      .insights-section::-webkit-scrollbar {
+        width: 4px;
+      }
+      .insights-section::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .insights-section::-webkit-scrollbar-thumb {
+        background: var(--border2);
+        border-radius: 99px;
       }
       .insights-title {
         font-family: "JetBrains Mono", monospace;
@@ -2120,6 +2137,7 @@
         CAL.hovering = null;
         renderCal();
         popup.classList.add("open");
+        attachCalEvents(); // no-op if already attached — listener stays attached forever
         document.addEventListener("mousedown", calOutsideClick, { once: true });
       }
       function closeCal() {
@@ -2176,7 +2194,7 @@
       <span class="cal-month-title">${MONTHS[month]} ${year}</span>
       ${!showPrev ? `<button class="cal-nav-btn" onclick="calNav(1)">›</button>` : `<span></span>`}
     </div>
-    <div class="cal-grid">
+    <div class="cal-grid" data-month="${month}" data-year="${year}">
       ${DOWS.map((d) => `<div class="cal-dow">${d}</div>`).join("")}
       ${Array(firstDay).fill('<div class="cal-day cal-empty"></div>').join("")}`;
         for (let d = 1; d <= daysInMonth; d++) {
@@ -2188,7 +2206,6 @@
           const from = CAL.pickFrom ? startOfDay(CAL.pickFrom).getTime() : null;
           const to = CAL.pickTo ? startOfDay(CAL.pickTo).getTime() : null;
           const hov = CAL.hovering ? startOfDay(CAL.hovering).getTime() : null;
-          // Determine effective range for in-range highlight
           let rangeFrom = from,
             rangeTo = to ?? hov;
           if (rangeFrom && rangeTo && rangeFrom > rangeTo) {
@@ -2201,14 +2218,12 @@
             rangeFrom && rangeTo && ts > rangeFrom && ts < rangeTo;
           let cls = "cal-day";
           if (isFuture) cls += " cal-disabled";
+          else cls += " cal-selectable";
           if (isToday) cls += " cal-today";
           if (isStart) cls += " cal-start";
           if (isEnd || isHovEnd) cls += " cal-end";
           if (inRange) cls += " cal-in-range";
-          const handlers = isFuture
-            ? ""
-            : `onclick="calDayClick(${year},${month},${d})" onmouseenter="calHover(${year},${month},${d})"`;
-          html += `<div class="${cls}" ${handlers}>${d}</div>`;
+          html += `<div class="${cls}" data-day="${d}">${d}</div>`;
         }
         html += "</div></div>";
         return html;
@@ -2217,12 +2232,10 @@
         const clicked = new Date(y, m, d);
         clicked.setHours(0, 0, 0, 0);
         if (!CAL.pickFrom || (CAL.pickFrom && CAL.pickTo)) {
-          // Start fresh
           CAL.pickFrom = clicked;
           CAL.pickTo = null;
           CAL.hovering = null;
         } else {
-          // Second click
           if (clicked < CAL.pickFrom) {
             CAL.pickTo = CAL.pickFrom;
             CAL.pickFrom = clicked;
@@ -2231,15 +2244,74 @@
           }
           CAL.hovering = null;
         }
-        renderCal();
+        updateCalHighlights();
       }
-      let _calHoverTimer = null;
-      function calHover(y, m, d) {
-        if (CAL.pickFrom && !CAL.pickTo) {
-          CAL.hovering = new Date(y, m, d);
-          if (_calHoverTimer) clearTimeout(_calHoverTimer);
-          _calHoverTimer = setTimeout(() => renderCal(), 40);
+      // Event delegation — attached once when popup opens
+      function attachCalEvents() {
+        const popup = document.getElementById("calPopup");
+        if (!popup || popup._calEventsAttached) return;
+        popup._calEventsAttached = true;
+
+        popup.addEventListener("click", (e) => {
+          const day = e.target.closest(".cal-selectable");
+          if (!day) return;
+          const grid = day.closest(".cal-grid");
+          if (!grid) return;
+          const y = parseInt(grid.dataset.year);
+          const m = parseInt(grid.dataset.month);
+          const d = parseInt(day.dataset.day);
+          calDayClick(y, m, d);
+        });
+
+        popup.addEventListener("mouseover", (e) => {
+          const day = e.target.closest(".cal-selectable");
+          if (!day || !CAL.pickFrom || CAL.pickTo) return;
+          const grid = day.closest(".cal-grid");
+          if (!grid) return;
+          const y = parseInt(grid.dataset.year);
+          const m = parseInt(grid.dataset.month);
+          const d = parseInt(day.dataset.day);
+          const hovered = new Date(y, m, d);
+          if (!CAL.hovering || CAL.hovering.getTime() !== hovered.getTime()) {
+            CAL.hovering = hovered;
+            updateCalHighlights();
+          }
+        });
+      }
+
+      // Fast path: update only CSS classes without rebuilding DOM
+      function updateCalHighlights() {
+        const popup = document.getElementById("calPopup");
+        if (!popup) return;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const from = CAL.pickFrom ? startOfDay(CAL.pickFrom).getTime() : null;
+        const to = CAL.pickTo ? startOfDay(CAL.pickTo).getTime() : null;
+        const hov = CAL.hovering ? startOfDay(CAL.hovering).getTime() : null;
+        let rangeFrom = from,
+          rangeTo = to ?? hov;
+        if (rangeFrom && rangeTo && rangeFrom > rangeTo) {
+          [rangeFrom, rangeTo] = [rangeTo, rangeFrom];
         }
+
+        popup.querySelectorAll(".cal-day[data-day]").forEach((el) => {
+          const grid = el.closest(".cal-grid");
+          if (!grid) return;
+          const y = parseInt(grid.dataset.year);
+          const m = parseInt(grid.dataset.month);
+          const d = parseInt(el.dataset.day);
+          const ts = new Date(y, m, d).setHours(0, 0, 0, 0);
+          el.classList.toggle("cal-start", !!(from && ts === from));
+          el.classList.toggle(
+            "cal-end",
+            !!(to && ts === to) || (!to && !!(hov && from && ts === hov)),
+          );
+          el.classList.toggle(
+            "cal-in-range",
+            !!(rangeFrom && rangeTo && ts > rangeFrom && ts < rangeTo),
+          );
+        });
+        updateCalFooter();
       }
       function updateCalFooter() {
         const disp = document.getElementById("calSelectedDisplay");
