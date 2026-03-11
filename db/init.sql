@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS audits (
   cls            NUMERIC(8,4),
   -- Full report
   report_json    JSONB,
+  report_path    TEXT,
   status         VARCHAR(20) DEFAULT 'completed',
   error_message  TEXT,
   audited_at     TIMESTAMP DEFAULT NOW()

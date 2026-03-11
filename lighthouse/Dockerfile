@@ -25,9 +25,9 @@ ENV CHROME_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+COPY package.json ./
+RUN rm -f package-lock.json && npm install --omit=dev
 COPY . .
 
 EXPOSE 3001
-CMD ["node", "server.js"]
+CMD ["node", "--max-old-space-size=512", "server.js"]
