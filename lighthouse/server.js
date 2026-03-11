@@ -1,11 +1,17 @@
-const express = require("express");
-const chromeLauncher = require("chrome-launcher");
-const { Pool } = require("pg");
+const express = require('express');
+const chromeLauncher = require('chrome-launcher');
+const { Pool } = require('pg');
+const fs   = require('fs');
+const path = require('path');
+
+const REPORTS_DIR = process.env.REPORTS_DIR || '/app/reports';
+// Ensure reports directory exists
+if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR, { recursive: true });
 
 let lighthouseFn;
 async function getLighthouse() {
   if (!lighthouseFn) {
-    const mod = await import("lighthouse");
+    const mod = await import('lighthouse');
     lighthouseFn = mod.default ?? mod.lighthouse ?? mod;
   }
   return lighthouseFn;
@@ -16,11 +22,11 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 
 const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT || "5432"),
-  user: process.env.DB_USER || "lighthouse",
-  password: process.env.DB_PASSWORD || "lighthouse_pass",
-  database: process.env.DB_NAME || "lighthouse_db",
+  host:     process.env.DB_HOST     || 'localhost',
+  port:     parseInt(process.env.DB_PORT || '5432'),
+  user:     process.env.DB_USER     || 'lighthouse',
+  password: process.env.DB_PASSWORD || 'lighthouse_pass',
+  database: process.env.DB_NAME     || 'lighthouse_db',
 });
 
 // ── Audit queue — one Chrome at a time ───────────────────────────
@@ -55,66 +61,38 @@ async function drainQueue() {
 async function waitForDb(retries = 10, delay = 3000) {
   for (let i = 0; i < retries; i++) {
     try {
-      await pool.query("SELECT 1");
-      console.log("✅ Database connected");
+      await pool.query('SELECT 1');
+      console.log('✅ Database connected');
       return;
     } catch (err) {
       console.log(`⏳ Waiting for DB... (${i + 1}/${retries})`);
-      await new Promise((r) => setTimeout(r, delay));
+      await new Promise(r => setTimeout(r, delay));
     }
   }
-  throw new Error("Could not connect to database");
+  throw new Error('Could not connect to database');
 }
 
 // ── Lighthouse config per form factor ─────────────────────────────
 function getLighthouseConfig(formFactor) {
-  if (formFactor === "desktop") {
+  if (formFactor === 'desktop') {
     return {
-      formFactor: "desktop",
-      throttling: {
-        rttMs: 40,
-        throughputKbps: 10240,
-        cpuSlowdownMultiplier: 1,
-        requestLatencyMs: 0,
-        downloadThroughputKbps: 0,
-        uploadThroughputKbps: 0,
-      },
-      screenEmulation: {
-        mobile: false,
-        width: 1350,
-        height: 940,
-        deviceScaleFactor: 1,
-        disabled: false,
-      },
-      emulatedUserAgent:
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      formFactor: 'desktop',
+      throttling: { rttMs: 40, throughputKbps: 10240, cpuSlowdownMultiplier: 1, requestLatencyMs: 0, downloadThroughputKbps: 0, uploadThroughputKbps: 0 },
+      screenEmulation: { mobile: false, width: 1350, height: 940, deviceScaleFactor: 1, disabled: false },
+      emulatedUserAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     };
   }
   return {
-    formFactor: "mobile",
-    throttling: {
-      rttMs: 150,
-      throughputKbps: 1638.4,
-      cpuSlowdownMultiplier: 4,
-      requestLatencyMs: 562.5,
-      downloadThroughputKbps: 1474.56,
-      uploadThroughputKbps: 675,
-    },
-    screenEmulation: {
-      mobile: true,
-      width: 360,
-      height: 640,
-      deviceScaleFactor: 2.625,
-      disabled: false,
-    },
-    emulatedUserAgent:
-      "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    formFactor: 'mobile',
+    throttling: { rttMs: 150, throughputKbps: 1638.4, cpuSlowdownMultiplier: 4, requestLatencyMs: 562.5, downloadThroughputKbps: 1474.56, uploadThroughputKbps: 675 },
+    screenEmulation: { mobile: true, width: 360, height: 640, deviceScaleFactor: 2.625, disabled: false },
+    emulatedUserAgent: 'Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
   };
 }
 
 function auditVal(lhr, key) {
   const v = lhr.audits?.[key]?.numericValue;
-  return v !== undefined && v !== null && !isNaN(v) ? v : null;
+  return (v !== undefined && v !== null && !isNaN(v)) ? v : null;
 }
 
 // ── Core audit function (runs inside the queue) ───────────────────
@@ -127,11 +105,11 @@ async function runAudit(url, formFactor, client_id) {
     try {
       const result = await pool.query(
         `INSERT INTO audits (client_id, form_factor, status) VALUES ($1, $2, 'running') RETURNING id`,
-        [client_id, formFactor],
+        [client_id, formFactor]
       );
       auditId = result.rows[0].id;
     } catch (err) {
-      console.error("Failed to create audit record:", err.message);
+      console.error('Failed to create audit record:', err.message);
     }
   }
 
@@ -139,16 +117,16 @@ async function runAudit(url, formFactor, client_id) {
     console.log(`🔍 Auditing [${formFactor}]: ${url}`);
 
     chrome = await chromeLauncher.launch({
-      chromePath: process.env.CHROME_PATH || "/usr/bin/chromium",
+      chromePath: process.env.CHROME_PATH || '/usr/bin/chromium',
       chromeFlags: [
-        "--headless=new", // new headless mode — supports screenshots
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage", // use /tmp instead of /dev/shm to avoid OOM
-        "--disable-gpu",
-        "--no-zygote",
-        "--hide-scrollbars",
-        "--mute-audio",
+        '--headless=new',          // new headless mode — supports screenshots
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage', // use /tmp instead of /dev/shm to avoid OOM
+        '--disable-gpu',
+        '--no-zygote',
+        '--hide-scrollbars',
+        '--mute-audio',
       ],
     });
 
@@ -156,123 +134,102 @@ async function runAudit(url, formFactor, client_id) {
     const runnerResult = await lighthouse(
       url,
       {
-        logLevel: "error",
-        output: "json",
+        logLevel: 'error',
+        output: 'json',
         port: chrome.port,
-        onlyCategories: [
-          "performance",
-          "accessibility",
-          "best-practices",
-          "seo",
-        ],
+        onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
       },
-      {
-        extends: "lighthouse:default",
-        settings: getLighthouseConfig(formFactor),
-      },
+      { extends: 'lighthouse:default', settings: getLighthouseConfig(formFactor) }
     );
 
     const lhr = runnerResult.lhr;
     const { categories } = lhr;
 
     const scores = {
-      performance: Math.round((categories.performance?.score || 0) * 100),
-      accessibility: Math.round((categories.accessibility?.score || 0) * 100),
-      best_practices: Math.round(
-        (categories["best-practices"]?.score || 0) * 100,
-      ),
-      seo: Math.round((categories.seo?.score || 0) * 100),
-      pwa: null, // removed in Lighthouse 13
+      performance:    Math.round((categories.performance?.score           || 0) * 100),
+      accessibility:  Math.round((categories.accessibility?.score        || 0) * 100),
+      best_practices: Math.round((categories['best-practices']?.score    || 0) * 100),
+      seo:            Math.round((categories.seo?.score                  || 0) * 100),
     };
 
     const metrics = {
-      fcp_ms: auditVal(lhr, "first-contentful-paint"),
-      lcp_ms: auditVal(lhr, "largest-contentful-paint"),
-      tbt_ms: auditVal(lhr, "total-blocking-time"),
-      si_ms: auditVal(lhr, "speed-index"),
-      tti_ms: auditVal(lhr, "interactive"),
-      cls: auditVal(lhr, "cumulative-layout-shift"),
+      fcp_ms: auditVal(lhr, 'first-contentful-paint'),
+      lcp_ms: auditVal(lhr, 'largest-contentful-paint'),
+      tbt_ms: auditVal(lhr, 'total-blocking-time'),
+      si_ms:  auditVal(lhr, 'speed-index'),
+      tti_ms: auditVal(lhr, 'interactive'),
+      cls:    auditVal(lhr, 'cumulative-layout-shift'),
     };
 
-    // Persist results
+    // Write report to volume file using a stream to avoid holding full JSON in memory
+    let reportPath = null;
+    try {
+      const fileName = `audit_${client_id || 'anon'}_${Date.now()}.json`;
+      reportPath = path.join(REPORTS_DIR, fileName);
+      const writeStream = fs.createWriteStream(reportPath);
+      await new Promise((resolve, reject) => {
+        const str = JSON.stringify(lhr);
+        writeStream.end(str, (err) => err ? reject(err) : resolve());
+      });
+    } catch (fsErr) {
+      console.error('⚠️  Could not write report file:', fsErr.message);
+      reportPath = null;
+    }
+
+    // Free the large LHR object from memory now that we've extracted what we need
+    runnerResult.lhr = null;
+
     if (auditId) {
       await pool.query(
         `UPDATE audits SET
-           performance=$1, accessibility=$2, best_practices=$3, seo=$4, pwa=$5,
-           fcp_ms=$6, lcp_ms=$7, tbt_ms=$8, si_ms=$9, tti_ms=$10, cls=$11,
-           report_json=$12, status='completed', audited_at=NOW()
-         WHERE id=$13`,
+           performance=$1, accessibility=$2, best_practices=$3, seo=$4,
+           fcp_ms=$5, lcp_ms=$6, tbt_ms=$7, si_ms=$8, tti_ms=$9, cls=$10,
+           report_path=$11, status='completed', audited_at=NOW()
+         WHERE id=$12`,
         [
-          scores.performance,
-          scores.accessibility,
-          scores.best_practices,
-          scores.seo,
-          scores.pwa,
-          metrics.fcp_ms,
-          metrics.lcp_ms,
-          metrics.tbt_ms,
-          metrics.si_ms,
-          metrics.tti_ms,
-          metrics.cls,
-          JSON.stringify(lhr),
-          auditId,
-        ],
+          scores.performance, scores.accessibility, scores.best_practices, scores.seo,
+          metrics.fcp_ms, metrics.lcp_ms, metrics.tbt_ms, metrics.si_ms, metrics.tti_ms, metrics.cls,
+          reportPath, auditId,
+        ]
       );
     } else if (client_id) {
       const ins = await pool.query(
         `INSERT INTO audits
-           (client_id, form_factor, performance, accessibility, best_practices, seo, pwa,
-            fcp_ms, lcp_ms, tbt_ms, si_ms, tti_ms, cls, report_json, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'completed') RETURNING id`,
+           (client_id, form_factor, performance, accessibility, best_practices, seo,
+            fcp_ms, lcp_ms, tbt_ms, si_ms, tti_ms, cls, report_path, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'completed') RETURNING id`,
         [
-          client_id,
-          formFactor,
-          scores.performance,
-          scores.accessibility,
-          scores.best_practices,
-          scores.seo,
-          scores.pwa,
-          metrics.fcp_ms,
-          metrics.lcp_ms,
-          metrics.tbt_ms,
-          metrics.si_ms,
-          metrics.tti_ms,
-          metrics.cls,
-          JSON.stringify(lhr),
-        ],
+          client_id, formFactor,
+          scores.performance, scores.accessibility, scores.best_practices, scores.seo,
+          metrics.fcp_ms, metrics.lcp_ms, metrics.tbt_ms, metrics.si_ms, metrics.tti_ms, metrics.cls,
+          reportPath,
+        ]
       );
       auditId = ins.rows[0].id;
     }
 
     console.log(`✅ Audit complete [${formFactor}] for ${url}:`, scores);
-    return {
-      success: true,
-      url,
-      form_factor: formFactor,
-      scores,
-      metrics,
-      audit_id: auditId,
-    };
+    return { success: true, url, form_factor: formFactor, scores, metrics, audit_id: auditId };
+
   } catch (err) {
     console.error(`❌ Audit failed for ${url}:`, err.message);
     if (auditId) {
-      await pool
-        .query(
-          `UPDATE audits SET status='failed', error_message=$1 WHERE id=$2`,
-          [err.message, auditId],
-        )
-        .catch(() => {});
+      await pool.query(
+        `UPDATE audits SET status='failed', error_message=$1 WHERE id=$2`,
+        [err.message, auditId]
+      ).catch(() => {});
     }
     throw err;
+
   } finally {
     // Safely kill Chrome — guard against undefined or missing kill()
     if (chrome) {
       try {
-        if (typeof chrome.kill === "function") {
+        if (typeof chrome.kill === 'function') {
           await chrome.kill();
         }
       } catch (killErr) {
-        console.warn("⚠️  Chrome kill warning:", killErr.message);
+        console.warn('⚠️  Chrome kill warning:', killErr.message);
       }
       chrome = null;
     }
@@ -280,27 +237,22 @@ async function runAudit(url, formFactor, client_id) {
 }
 
 // ── Health ─────────────────────────────────────────────────────────
-app.get("/health", (req, res) => {
+app.get('/health', (req, res) => {
   res.json({
-    status: "ok",
-    service: "lighthouse",
+    status: 'ok',
+    service: 'lighthouse',
     queue_length: auditQueue.length,
     queue_running: queueRunning,
   });
 });
 
 // ── Audit endpoint — immediately enqueues, returns when done ───────
-app.get("/audit", async (req, res) => {
+app.get('/audit', async (req, res) => {
   const { url, client_id } = req.query;
-  const formFactor = req.query.form_factor === "desktop" ? "desktop" : "mobile";
+  const formFactor = req.query.form_factor === 'desktop' ? 'desktop' : 'mobile';
 
-  if (!url)
-    return res.status(400).json({ error: "`url` query param is required" });
-  try {
-    new URL(url);
-  } catch {
-    return res.status(400).json({ error: "Invalid URL format" });
-  }
+  if (!url) return res.status(400).json({ error: '`url` query param is required' });
+  try { new URL(url); } catch { return res.status(400).json({ error: 'Invalid URL format' }); }
 
   const position = auditQueue.length + (queueRunning ? 1 : 0);
   if (position > 0) {
@@ -317,7 +269,5 @@ app.get("/audit", async (req, res) => {
 
 (async () => {
   await waitForDb();
-  app.listen(PORT, () =>
-    console.log(`🚀 Lighthouse service running on port ${PORT}`),
-  );
+  app.listen(PORT, () => console.log(`🚀 Lighthouse service running on port ${PORT}`));
 })();

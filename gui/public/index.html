@@ -165,7 +165,6 @@
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 12px;
-        overflow: hidden;
       }
       .panel-header {
         padding: 1rem 1.25rem;
@@ -433,6 +432,7 @@
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
+        min-width: 0;
       }
 
       /* ── Score grid ── */
@@ -756,7 +756,7 @@
 
       /* ── Chart drawer ── */
       .chart-drawer {
-        overflow: hidden;
+        overflow: visible;
         max-height: 0;
         transition: max-height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         border-top: 0px solid var(--border);
@@ -767,6 +767,8 @@
       }
       .chart-drawer-inner {
         padding: 1.5rem;
+        min-width: 0;
+        overflow-x: hidden;
       }
       .chart-drawer-header {
         display: flex;
@@ -810,7 +812,7 @@
       }
       .cwv-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 1rem;
       }
       .cwv-card {
@@ -818,6 +820,8 @@
         border: 1px solid var(--border);
         border-radius: 10px;
         padding: 1rem;
+        min-width: 0;
+        overflow: hidden;
       }
       .cwv-card-top {
         display: flex;
@@ -1448,11 +1452,116 @@
         font-size: 0.65rem;
         color: var(--muted);
       }
-      /* insights panel */
+      /* ── Schedule popup ── */
+      .sched-popup-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 300;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(3px);
+        align-items: center;
+        justify-content: center;
+      }
+      .sched-popup-overlay.open {
+        display: flex;
+      }
+      .sched-popup {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 14px;
+        width: min(540px, 95vw);
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+        scrollbar-width: thin;
+        scrollbar-color: var(--border2) transparent;
+      }
+      .sched-popup-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--surface);
+        z-index: 1;
+        gap: 0.75rem;
+      }
+      .sched-popup-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--purple);
+        flex: 1;
+      }
+      .sched-tz-badge {
+        font-size: 0.62rem;
+        color: var(--accent);
+        background: rgba(245, 166, 35, 0.08);
+        border: 1px solid rgba(245, 166, 35, 0.2);
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-family: "JetBrains Mono", monospace;
+        white-space: nowrap;
+      }
+      .sched-popup-body {
+        padding: 1.25rem;
+      }
+      .sched-popup-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 1.1rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        line-height: 1;
+      }
+      .sched-popup-close:hover {
+        color: var(--text);
+        background: var(--surface2);
+      }
+      /* ── History pagination ── */
+      .history-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.6rem 1rem;
+        border-top: 1px solid var(--border);
+      }
+      .pg-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        color: var(--text2);
+        cursor: pointer;
+        padding: 4px 10px;
+        font-size: 0.72rem;
+        font-family: "JetBrains Mono", monospace;
+        transition: all 0.15s;
+      }
+      .pg-btn:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .pg-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .pg-info {
+        font-size: 0.7rem;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+      }
+      /* ── Rich insights ── */
       .insights-section {
         padding: 1.25rem 1.5rem 0;
         border-top: 1px solid var(--border);
-        max-height: 420px;
+        max-height: 640px;
         overflow-y: auto;
         scrollbar-width: thin;
         scrollbar-color: var(--border2) transparent;
@@ -1495,23 +1604,203 @@
         color: var(--muted);
         margin: 1rem 0 0.4rem;
       }
+      /* ── Schedule popup ── */
+      .sched-popup-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 200;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+      }
+      .sched-popup-overlay.open {
+        display: flex;
+      }
+      .sched-popup {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 16px;
+        width: min(560px, 95vw);
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+      }
+      .sched-popup-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      .sched-popup-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text);
+      }
+      .sched-popup-tz {
+        font-size: 0.65rem;
+        color: var(--accent);
+        font-family: "JetBrains Mono", monospace;
+        background: rgba(245, 166, 35, 0.08);
+        border: 1px solid rgba(245, 166, 35, 0.2);
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+      .sched-popup-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 1.1rem;
+        line-height: 1;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: color 0.15s;
+      }
+      .sched-popup-close:hover {
+        color: var(--text);
+      }
+      .sched-popup-body {
+        padding: 1.25rem 1.5rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+      }
+      /* ── History pagination ── */
+      .history-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.75rem;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .history-pagination-btns {
+        display: flex;
+        gap: 4px;
+      }
+      .pg-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        color: var(--text2);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        padding: 4px 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .pg-btn:hover:not(:disabled) {
+        background: var(--surface3);
+        color: var(--text);
+      }
+      .pg-btn.active {
+        background: rgba(245, 166, 35, 0.12);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .pg-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      /* ── Rich insights ── */
       .insight-item {
         background: var(--surface2);
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 0.7rem 0.9rem;
         margin-bottom: 0.4rem;
-        cursor: default;
+        overflow: hidden;
         transition: border-color 0.15s;
       }
       .insight-item:hover {
         border-color: var(--border2);
       }
+      .insight-tag {
+        display: inline-block;
+        font-size: 0.6rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border2);
+        border-radius: 3px;
+        padding: 1px 5px;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        margin-right: 3px;
+      }
+      .insight-item:hover {
+        border-color: var(--border2);
+      }
+      .insight-item-trigger {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.7rem 0.9rem;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.12s;
+      }
+      .insight-item-trigger:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .insight-chevron {
+        font-size: 0.65rem;
+        color: var(--muted);
+        transition: transform 0.2s;
+        flex-shrink: 0;
+        margin-left: auto;
+      }
+      .insight-item.open .insight-chevron {
+        transform: rotate(90deg);
+      }
+      .insight-item-body {
+        display: none;
+        border-top: 1px solid var(--border);
+        padding: 0.75rem 0.9rem 0.85rem;
+      }
+      .insight-item.open .insight-item-body {
+        display: block;
+      }
+
+      .insight-node-snip {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.65rem;
+        color: var(--text2);
+        background: var(--surface3);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 4px 7px;
+        margin-top: 3px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 60px;
+        overflow: hidden;
+      }
+      .insight-url {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.68rem;
+        word-break: break-all;
+        color: var(--blue);
+      }
       .insight-item-header {
         display: flex;
         align-items: center;
         gap: 0.6rem;
-        margin-bottom: 0.25rem;
+        padding: 0.65rem 0.9rem;
+        cursor: pointer;
+        transition: background 0.12s;
+        user-select: none;
+      }
+      .insight-item-header:hover {
+        background: var(--surface3);
       }
       .insight-score-dot {
         width: 8px;
@@ -1531,17 +1820,111 @@
         font-family: "JetBrains Mono", monospace;
         white-space: nowrap;
       }
-      .insight-desc {
-        font-size: 0.73rem;
+      .insight-chevron {
+        font-size: 0.65rem;
         color: var(--muted);
-        line-height: 1.5;
-        margin-top: 0.1rem;
+        transition: transform 0.2s;
+        flex-shrink: 0;
+      }
+      .insight-item.open .insight-chevron {
+        transform: rotate(90deg);
+      }
+      .insight-body {
+        display: none;
+        padding: 0 0.9rem 0.85rem;
+        border-top: 1px solid var(--border);
+      }
+      .insight-item.open .insight-body {
+        display: block;
+      }
+      .insight-desc {
+        font-size: 0.75rem;
+        color: var(--muted);
+        line-height: 1.55;
+        padding: 0.5rem 0 0.35rem;
       }
       .insight-display-val {
-        font-size: 0.72rem;
-        color: var(--text2);
+        font-size: 0.75rem;
+        color: var(--accent);
         font-family: "JetBrains Mono", monospace;
-        margin-top: 0.3rem;
+        padding: 0.15rem 0 0.35rem;
+        font-weight: 600;
+      }
+      .insight-table-wrap {
+        overflow-x: auto;
+        margin-top: 0.35rem;
+        width: 100%;
+      }
+      .insight-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: 0.72rem;
+      }
+      .insight-table th {
+        text-align: left;
+        color: var(--muted);
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        padding: 5px 8px;
+        border-bottom: 1px solid var(--border);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .insight-table th:first-child {
+        width: 50%;
+      }
+      .insight-table td {
+        padding: 5px 8px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text2);
+        vertical-align: top;
+        overflow: hidden;
+        max-width: 0;
+      }
+      .insight-table tr:last-child td {
+        border-bottom: none;
+      }
+      .insight-table tr:hover td {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .insight-td-url {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.68rem;
+        color: var(--blue);
+      }
+      .insight-td-num {
+        text-align: right;
+        font-family: "JetBrains Mono", monospace;
+        white-space: nowrap;
+        color: var(--text);
+      }
+      .insight-td-savings {
+        text-align: right;
+        font-family: "JetBrains Mono", monospace;
+        white-space: nowrap;
+        color: var(--accent);
+      }
+      .insight-node-snippet {
+        font-size: 0.68rem;
+        color: var(--text2);
+        font-family: monospace;
+        background: var(--surface3);
+        border-radius: 4px;
+        padding: 3px 7px;
+        margin-top: 4px;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        border: 1px solid var(--border);
       }
       .insights-empty {
         font-size: 0.8rem;
@@ -1553,8 +1936,6 @@
       }
       /* scrollable history panel */
       .history-scroll {
-        overflow-y: auto;
-        max-height: 420px;
         overflow-x: auto;
         scrollbar-width: thin;
         scrollbar-color: var(--border2) transparent;
@@ -1569,6 +1950,49 @@
       .history-scroll::-webkit-scrollbar-thumb {
         background: var(--border2);
         border-radius: 99px;
+      }
+      /* history pagination */
+      .history-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 0.75rem 1rem;
+        border-top: 1px solid var(--border);
+        flex-wrap: wrap;
+      }
+      .hist-pg-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        color: var(--text2);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        padding: 4px 9px;
+        cursor: pointer;
+        transition: all 0.15s;
+        min-width: 30px;
+        text-align: center;
+      }
+      .hist-pg-btn:hover:not(:disabled) {
+        background: var(--surface3);
+        border-color: var(--border);
+        color: var(--text);
+      }
+      .hist-pg-btn.active {
+        background: rgba(245, 166, 35, 0.1);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .hist-pg-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .hist-pg-info {
+        font-size: 0.7rem;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        padding: 0 6px;
       }
       /* delete audit btn */
       .btn-del-audit {
@@ -1615,6 +2039,167 @@
           grid-template-columns: 1fr;
         }
       }
+      /* backup panel */
+      .backup-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 420px;
+        background: var(--surface);
+        border-left: 1px solid var(--border);
+        z-index: 300;
+        display: flex;
+        flex-direction: column;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .backup-panel.open {
+        transform: translateX(0);
+      }
+      .backup-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 299;
+        display: none;
+      }
+      .backup-overlay.open {
+        display: block;
+      }
+      .backup-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .backup-panel-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text);
+      }
+      .backup-panel-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border2) transparent;
+      }
+      .backup-section-title {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.6rem;
+      }
+      .backup-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .backup-file-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-top: 0.25rem;
+      }
+      .backup-file-item {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.6rem 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .backup-file-name {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.68rem;
+        color: var(--text2);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .backup-file-size {
+        font-size: 0.65rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .backup-file-actions {
+        display: flex;
+        gap: 0.3rem;
+        flex-shrink: 0;
+      }
+      .backup-empty {
+        font-size: 0.8rem;
+        color: var(--muted);
+        padding: 0.5rem 0;
+      }
+      .backup-info {
+        font-size: 0.76rem;
+        color: var(--muted);
+        line-height: 1.6;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.75rem 0.9rem;
+      }
+      .backup-info b {
+        color: var(--text2);
+      }
+      .backup-upload-zone {
+        border: 2px dashed var(--border2);
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          background 0.2s;
+      }
+      .backup-upload-zone:hover,
+      .backup-upload-zone.drag {
+        border-color: var(--accent);
+        background: rgba(245, 166, 35, 0.04);
+      }
+      .backup-upload-zone input {
+        display: none;
+      }
+      .backup-upload-icon {
+        font-size: 1.75rem;
+        margin-bottom: 0.4rem;
+      }
+      .backup-upload-text {
+        font-size: 0.8rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .backup-upload-text b {
+        color: var(--text2);
+      }
+      .backup-restore-progress {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.75rem 0.9rem;
+        font-size: 0.76rem;
+        color: var(--text2);
+        display: none;
+      }
+      .backup-restore-progress.show {
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -1624,6 +2209,14 @@
         LIGHTHOUSE MONITOR
       </div>
       <div style="display: flex; align-items: center; gap: 1.25rem">
+        <button
+          class="btn btn-ghost"
+          onclick="openBackupPanel()"
+          title="Backup & Restore"
+          style="font-size: 0.75rem; padding: 5px 10px"
+        >
+          💾 Backup
+        </button>
         <div class="tz-wrap" id="tzWrap">
           <button
             class="tz-select-btn"
@@ -1811,6 +2404,44 @@
         </div>
       </div>
     </main>
+
+    <!-- Schedule popup overlay -->
+    <div
+      class="sched-popup-overlay"
+      id="schedPopupOverlay"
+      onclick="closeSchedPopup(event)"
+    >
+      <div class="sched-popup" id="schedPopup">
+        <div class="sched-popup-header">
+          <span class="sched-popup-title">◷ Auto-Schedule</span>
+          <span class="sched-tz-badge" id="schedTzBadge">UTC</span>
+          <button class="sched-popup-close" onclick="closeSchedPopup()">
+            ✕
+          </button>
+        </div>
+        <div class="sched-popup-body" id="schedPopupBody"></div>
+      </div>
+    </div>
+
+    <!-- ── Schedule popup ── -->
+    <div
+      class="sched-popup-overlay"
+      id="schedPopupOverlay"
+      onclick="if (event.target === this) closeSchedPopup();"
+    >
+      <div class="sched-popup">
+        <div class="sched-popup-header">
+          <span class="sched-popup-title">⚙ Auto-Schedule</span>
+          <div style="display: flex; align-items: center; gap: 0.75rem">
+            <span class="sched-popup-tz" id="schedPopupTz">UTC</span>
+            <button class="sched-popup-close" onclick="closeSchedPopup()">
+              ✕
+            </button>
+          </div>
+        </div>
+        <div class="sched-popup-body" id="schedPopupBody"></div>
+      </div>
+    </div>
     <div id="viewerOverlay">
       <div class="big-spinner"></div>
       <p>Opening Lighthouse Viewer…</p>
@@ -1829,6 +2460,8 @@
         selectedCategory = null;
       let clientSearchQuery = "",
         clientPlatformFilter = "all";
+      let historyPage = 1;
+      const HISTORY_PER_PAGE = 10;
 
       // Date range state
       // preset: '1d'|'7d'|'30d'|'all'|'custom'
@@ -2095,8 +2728,50 @@
       }
       function refreshHistoryTable() {
         const tbody = document.getElementById("historyBody");
+        const pag = document.getElementById("historyPagination");
         if (!tbody) return;
-        tbody.innerHTML = buildHistoryRows(filteredAudits().slice(0, 50));
+        const all = filteredAudits();
+        const total = all.length;
+        const totalPages = Math.max(1, Math.ceil(total / HISTORY_PER_PAGE));
+        if (historyPage > totalPages) historyPage = totalPages;
+        const start = (historyPage - 1) * HISTORY_PER_PAGE;
+        const page = all.slice(start, start + HISTORY_PER_PAGE);
+        tbody.innerHTML = buildHistoryRows(page);
+
+        if (!pag) return;
+        if (total === 0) {
+          pag.innerHTML = "";
+          return;
+        }
+        // Build page buttons (show max 7 around current)
+        let btns = "";
+        const makeBtn = (p, label, active, disabled) =>
+          `<button class="pg-btn${active ? " active" : ""}${disabled ? " " : ""}" ${disabled ? "disabled" : ""} onclick="goHistoryPage(${p})">${label}</button>`;
+        btns += makeBtn(historyPage - 1, "‹", false, historyPage === 1);
+        const range = [];
+        for (let p = 1; p <= totalPages; p++) {
+          if (p === 1 || p === totalPages || Math.abs(p - historyPage) <= 2)
+            range.push(p);
+          else if (range[range.length - 1] !== "…") range.push("…");
+        }
+        range.forEach((p) => {
+          if (p === "…")
+            btns += `<span class="pg-btn" style="cursor:default;opacity:.4">…</span>`;
+          else btns += makeBtn(p, p, p === historyPage, false);
+        });
+        btns += makeBtn(
+          historyPage + 1,
+          "›",
+          false,
+          historyPage === totalPages,
+        );
+        const from = total === 0 ? 0 : start + 1,
+          to = Math.min(start + HISTORY_PER_PAGE, total);
+        pag.innerHTML = `<span class="history-pagination-info">${from}–${to} of ${total}</span><div class="history-pagination-btns">${btns}</div>`;
+      }
+      function goHistoryPage(p) {
+        historyPage = p;
+        refreshHistoryTable();
       }
 
       // ── Calendar picker ───────────────────────────────────────────────
@@ -2710,8 +3385,9 @@
           <button class="ff-btn mobile-active active" data-ff="mobile" onclick="if(!this.classList.contains('locked'))setFormFactor('mobile')">📱 Mobile</button>
           <button class="ff-btn" data-ff="desktop" onclick="if(!this.classList.contains('locked'))setFormFactor('desktop')">🖥 Desktop</button>
         </div>
-        <button class="btn btn-ghost" onclick="deleteClient(${c.id})">🗑 Remove</button>
         <button class="btn btn-primary" id="runAuditBtn" onclick="runAudit(${c.id})" style="width:auto">▶ Run Audit</button>
+        <button class="btn btn-ghost" onclick="openSchedPopup(${c.id})" title="Configure auto-schedule">⚙ Schedule</button>
+        <button class="btn btn-ghost" onclick="deleteClient(${c.id})" title="Remove client">🗑 Remove</button>
       </div>
 
       <div class="score-grid" id="scoreGrid">${scoreCards}</div>
@@ -2751,19 +3427,6 @@
         <div class="chart-drawer-inner" id="chartDrawerInner"></div>
       </div>
 
-      <div class="schedule-section">
-        <div class="schedule-section-title"><span style="color:var(--purple)">◷</span> Auto-Schedule</div>
-        <div class="preset-grid">${presetBtns}</div>
-        <div class="field">
-          <label>Custom Cron Expression</label>
-          <div class="cron-input-row">
-            <input id="customCron" type="text" placeholder="0 9 * * 1-5" value="${escHtml(c.schedule || "")}" oninput="onCronInput(this.value)"/>
-            <button class="btn btn-purple" id="saveScheduleBtn" onclick="saveSchedule(${c.id})">Save</button>
-          </div>
-          <div class="cron-hint">min &nbsp; hour &nbsp; day &nbsp; month &nbsp; weekday &nbsp;|&nbsp; e.g. <span style="color:var(--text2)">0 9 * * 1-5</span> = weekdays at 9am</div>
-        </div>
-        ${schedHtml}
-      </div>
     </div>
 
     <div class="panel">
@@ -2777,9 +3440,10 @@
             <th>Timestamp</th><th>Device</th><th>Perf</th><th>A11y</th>
             <th>Best</th><th>SEO</th><th>Status</th><th>Report</th><th></th>
           </tr></thead>
-          <tbody id="historyBody">${buildHistoryRows(filteredAudits().slice(0, 50))}</tbody>
+          <tbody id="historyBody"></tbody>
         </table>
       </div>
+      <div class="history-pagination" id="historyPagination"></div>
     </div>`;
 
         // Lock FF toggle if client has dedicated platform
@@ -2794,6 +3458,8 @@
           setFormFactor(currentFormFactor, false);
         }
         refreshDateUI();
+        historyPage = 1;
+        refreshHistoryTable();
         if (selectedCategory) renderChartDrawer(selectedCategory);
       }
 
@@ -3004,15 +3670,14 @@
             return;
           }
 
-          // Get all audit refs for this category
           const refs = cat.auditRefs || [];
-          const items = refs
+          const allItems = refs
             .map((r) => ({ ...lhr.audits?.[r.id], _weight: r.weight ?? 0 }))
+            .filter((a) => a && a.id && a.scoreDisplayMode !== "notApplicable");
+
+          const failing = allItems
             .filter(
               (a) =>
-                a &&
-                a.id &&
-                a.scoreDisplayMode !== "notApplicable" &&
                 a.scoreDisplayMode !== "manual" &&
                 a.scoreDisplayMode !== "informative" &&
                 a.score !== null &&
@@ -3021,61 +3686,293 @@
             )
             .sort((a, b) => (a.score ?? 1) - (b.score ?? 1));
 
-          if (!items.length) {
-            el.innerHTML =
-              '<div class="insights-empty">✅ No issues found — all audits passed!</div>';
+          const passed = allItems
+            .filter((a) => a.score === 1)
+            .sort((a, b) => a.title.localeCompare(b.title));
+
+          const manual = allItems.filter(
+            (a) =>
+              a.scoreDisplayMode === "manual" ||
+              a.scoreDisplayMode === "informative",
+          );
+
+          if (!failing.length && !manual.length) {
+            el.innerHTML = `<div class="insights-empty">✅ All audits passed!</div>
+        ${passed.length ? `<div class="insights-group-label" style="margin-top:.75rem">✅ Passed (${passed.length})</div>${renderInsightItems(passed, lhr)}` : ""}`;
             return;
           }
 
-          // Split into opportunities (have savings) vs diagnostics
-          const opps = items.filter((a) => a.details?.type === "opportunity");
-          const diags = items.filter((a) => a.details?.type !== "opportunity");
-
-          function scoreColor(s) {
-            if (s === null || s === undefined) return "var(--muted)";
-            if (s >= 0.9) return "var(--green)";
-            if (s >= 0.5) return "var(--accent)";
-            return "var(--red)";
-          }
-          function renderItems(arr) {
-            return arr
-              .map((a) => {
-                const savings = a.details?.overallSavingsMs
-                  ? `<span class="insight-savings">~${Math.round(a.details.overallSavingsMs)}ms</span>`
-                  : a.details?.overallSavingsBytes
-                    ? `<span class="insight-savings">~${Math.round(a.details.overallSavingsBytes / 1024)} KiB</span>`
-                    : "";
-                const dispVal = a.displayValue
-                  ? `<div class="insight-display-val">${escHtml(a.displayValue)}</div>`
-                  : "";
-                const desc = a.description
-                  ? `<div class="insight-desc">${escHtml(a.description.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"))}</div>`
-                  : "";
-                return `<div class="insight-item">
-          <div class="insight-item-header">
-            <span class="insight-score-dot" style="background:${scoreColor(a.score)}"></span>
-            <span class="insight-title">${escHtml(a.title)}</span>
-            ${savings}
-          </div>
-          ${dispVal}${desc}
-        </div>`;
-              })
-              .join("");
-          }
+          const opps = failing.filter((a) => a.details?.type === "opportunity");
+          const diags = failing.filter(
+            (a) => a.details?.type !== "opportunity",
+          );
 
           let html = "";
-          if (opps.length) {
-            html += `<div class="insights-group-label">⚡ Opportunities</div>${renderItems(opps)}`;
-          }
-          if (diags.length) {
-            html += `<div class="insights-group-label">🔧 Diagnostics</div>${renderItems(diags)}`;
-          }
+          if (opps.length)
+            html += `<div class="insights-group-label">⚡ Opportunities</div>${renderInsightItems(opps, lhr)}`;
+          if (diags.length)
+            html += `<div class="insights-group-label" style="margin-top:${opps.length ? ".75rem" : "0"}">🔧 Diagnostics</div>${renderInsightItems(diags, lhr)}`;
+          if (manual.length)
+            html += `<div class="insights-group-label" style="margin-top:.75rem">📋 Manual Checks</div>${renderInsightItems(manual, lhr)}`;
+          if (passed.length)
+            html += `<div class="insights-group-label" style="margin-top:.75rem">
+      <span>✅ Passed (${passed.length})</span>
+      <button onclick="togglePassedInsights(this)" class="btn btn-ghost" style="font-size:.62rem;padding:2px 7px;margin-left:.5rem">Show</button>
+    </div><div id="passedInsightsList" style="display:none">${renderInsightItems(passed, lhr)}</div>`;
+
           el.innerHTML = html;
         } catch (e) {
-          if (document.getElementById("insightsBody"))
-            document.getElementById("insightsBody").innerHTML =
-              `<div class="insights-loading">Could not load insights.</div>`;
+          const b = document.getElementById("insightsBody");
+          if (b)
+            b.innerHTML = `<div class="insights-loading">Could not load insights.</div>`;
         }
+      }
+
+      function togglePassedInsights(btn) {
+        const el = document.getElementById("passedInsightsList");
+        if (!el) return;
+        const open = el.style.display !== "none";
+        el.style.display = open ? "none" : "block";
+        btn.textContent = open ? "Show" : "Hide";
+      }
+
+      function scoreColor(s) {
+        if (s === null || s === undefined || s === "error")
+          return "var(--muted)";
+        if (s === 1) return "var(--green)";
+        if (s >= 0.9) return "var(--green)";
+        if (s >= 0.5) return "var(--accent)";
+        return "var(--red)";
+      }
+
+      function fmtBytes(b) {
+        if (b == null) return "—";
+        if (b < 1024) return b + "B";
+        if (b < 1024 * 1024) return (b / 1024).toFixed(1) + " KiB";
+        return (b / 1024 / 1024).toFixed(2) + " MiB";
+      }
+      function fmtMs(ms) {
+        if (ms == null) return "—";
+        if (ms < 1000) return Math.round(ms) + " ms";
+        return (ms / 1000).toFixed(2) + " s";
+      }
+      function fmtNum(v, unit) {
+        if (v == null) return "—";
+        return typeof v === "number"
+          ? (Number.isInteger(v) ? v : v.toFixed(2)) + (unit ? " " + unit : "")
+          : String(v);
+      }
+
+      function renderInsightDetailTable(details, lhr) {
+        if (!details) return "";
+        const type = details.type;
+
+        // ── opportunity table ──────────────────────────────────────────
+        if (type === "opportunity") {
+          const headings = details.headings || [];
+          const items = details.items || [];
+          if (!items.length) return "";
+          const colKeys = headings.map((h) => h.key || h.valueType);
+          const thHtml = headings
+            .map((h) => `<th>${escHtml(h.label || h.key || "")}</th>`)
+            .join("");
+          const rows = items
+            .map((item) => {
+              const tds = headings
+                .map((h) => {
+                  const v = item[h.key];
+                  let cell = "";
+                  if (v == null) {
+                    cell = '<span style="color:var(--muted)">—</span>';
+                  } else if (
+                    h.valueType === "bytes" ||
+                    h.key?.toLowerCase().includes("size") ||
+                    h.key?.toLowerCase().includes("bytes")
+                  ) {
+                    cell = `<span class="insight-td-savings">${fmtBytes(v)}</span>`;
+                  } else if (
+                    h.valueType === "timespanMs" ||
+                    h.valueType === "ms" ||
+                    h.key?.toLowerCase().includes("duration") ||
+                    h.key?.toLowerCase().includes("wasted_ms") ||
+                    h.key?.toLowerCase().includes("ms")
+                  ) {
+                    cell = `<span class="insight-td-savings">${fmtMs(v)}</span>`;
+                  } else if (h.valueType === "url" || h.key === "url") {
+                    const urlStr =
+                      v && v.url
+                        ? v.url
+                        : typeof v === "string"
+                          ? v
+                          : JSON.stringify(v);
+                    const label = v && v.text ? v.text : urlStr;
+                    cell = `<span class="insight-td-url" title="${escHtml(urlStr)}">${escHtml(label)}</span>`;
+                  } else if (
+                    h.valueType === "node" ||
+                    (v && v.type === "node")
+                  ) {
+                    const nodeLabel = v.nodeLabel || v.snippet || "";
+                    const snip = v.snippet || "";
+                    cell = `<div>${escHtml(nodeLabel)}</div>${snip ? `<code class="insight-node-snippet">${escHtml(snip)}</code>` : ""}`;
+                  } else if (typeof v === "object" && v !== null) {
+                    if (v.type === "code")
+                      cell = `<code class="insight-node-snippet">${escHtml(v.value || "")}</code>`;
+                    else if (v.url)
+                      cell = `<span class="insight-td-url" title="${escHtml(v.url)}">${escHtml(v.text || v.url)}</span>`;
+                    else
+                      cell = `<span>${escHtml(JSON.stringify(v).slice(0, 80))}</span>`;
+                  } else {
+                    cell = escHtml(String(v));
+                  }
+                  return `<td>${cell}</td>`;
+                })
+                .join("");
+              return `<tr>${tds}</tr>`;
+            })
+            .join("");
+          return `<div class="insight-table-wrap"><table class="insight-table"><thead><tr>${thHtml}</tr></thead><tbody>${rows}</tbody></table></div>`;
+        }
+
+        // ── table type ─────────────────────────────────────────────────
+        if (type === "table" || type === "list") {
+          const headings = details.headings || [];
+          const items = details.items || [];
+          if (!items.length) return "";
+          const thHtml = headings
+            .map((h) => `<th>${escHtml(h.label || h.key || "")}</th>`)
+            .join("");
+          const rows = items
+            .map((item) => {
+              const tds = headings
+                .map((h) => {
+                  const v = item[h.key];
+                  let cell = "";
+                  if (v == null) {
+                    cell = "—";
+                  } else if (h.valueType === "bytes") {
+                    cell = `<span class="insight-td-savings">${fmtBytes(v)}</span>`;
+                  } else if (
+                    h.valueType === "timespanMs" ||
+                    h.valueType === "ms"
+                  ) {
+                    cell = `<span class="insight-td-savings">${fmtMs(v)}</span>`;
+                  } else if (h.valueType === "url" || h.key === "url") {
+                    const urlStr =
+                      v && v.url ? v.url : typeof v === "string" ? v : "";
+                    const label = v && v.text ? v.text : urlStr;
+                    cell = `<span class="insight-td-url" title="${escHtml(urlStr)}">${escHtml(label)}</span>`;
+                  } else if (
+                    h.valueType === "node" ||
+                    (v && v.type === "node")
+                  ) {
+                    const nodeLabel = v.nodeLabel || v.snippet || "";
+                    const snip = v.snippet || "";
+                    cell = `<div>${escHtml(nodeLabel)}</div>${snip ? `<code class="insight-node-snippet">${escHtml(snip)}</code>` : ""}`;
+                  } else if (typeof v === "object" && v !== null) {
+                    if (v.type === "code")
+                      cell = `<code class="insight-node-snippet">${escHtml(v.value || "")}</code>`;
+                    else if (v.url)
+                      cell = `<span class="insight-td-url">${escHtml(v.text || v.url)}</span>`;
+                    else cell = escHtml(JSON.stringify(v).slice(0, 80));
+                  } else {
+                    cell = escHtml(String(v));
+                  }
+                  return `<td>${cell}</td>`;
+                })
+                .join("");
+              return `<tr>${tds}</tr>`;
+            })
+            .join("");
+          if (!thHtml && !rows) return "";
+          return `<div class="insight-table-wrap"><table class="insight-table">${thHtml ? `<thead><tr>${thHtml}</tr></thead>` : ""}<tbody>${rows}</tbody></table></div>`;
+        }
+
+        // ── criticalrequestchain ───────────────────────────────────────
+        if (type === "criticalrequestchain") {
+          const chains = details.chains || {};
+          function flattenChain(chain, depth = 0) {
+            let rows = [];
+            for (const [id, node] of Object.entries(chain)) {
+              const req = node.request || {};
+              const indent = "&nbsp;".repeat(depth * 4);
+              rows.push(
+                `<tr><td>${indent}<span class="insight-td-url">${escHtml(req.url || id)}</span></td><td class="insight-td-num">${fmtMs(req.endTime && req.startTime ? (req.endTime - req.startTime) * 1000 : null)}</td><td class="insight-td-savings">${fmtBytes(req.transferSize)}</td></tr>`,
+              );
+              if (node.children)
+                rows = rows.concat(flattenChain(node.children, depth + 1));
+            }
+            return rows;
+          }
+          const rows = flattenChain(chains).join("");
+          if (!rows) return "";
+          return `<div class="insight-table-wrap"><table class="insight-table"><thead><tr><th>URL</th><th>Duration</th><th>Size</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        }
+
+        // ── filmstrip ──────────────────────────────────────────────────
+        if (type === "filmstrip") {
+          const frames = details.items || [];
+          if (!frames.length) return "";
+          const strips = frames
+            .map((f) => {
+              const ts = f.timestamp ? fmtMs(f.timestamp / 1000) : "";
+              return `<div style="text-align:center;font-size:.6rem;color:var(--muted)">${ts}</div>`;
+            })
+            .join("");
+          return `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:.25rem">${strips}</div>`;
+        }
+
+        return "";
+      }
+
+      function renderInsightItems(arr, lhr) {
+        return arr
+          .map((a, idx) => {
+            const iid = `insight_${a.id || idx}`;
+            const savings = a.details?.overallSavingsMs
+              ? `<span class="insight-savings">Est savings ${fmtMs(a.details.overallSavingsMs)}</span>`
+              : a.details?.overallSavingsBytes
+                ? `<span class="insight-savings">Est savings ${fmtBytes(a.details.overallSavingsBytes)}</span>`
+                : "";
+
+            const scoreVal = a.score;
+            const dot =
+              a.scoreDisplayMode === "binary"
+                ? `<span class="insight-score-dot" style="background:${scoreColor(scoreVal)};border-radius:2px"></span>`
+                : `<span class="insight-score-dot" style="background:${scoreColor(scoreVal)}"></span>`;
+
+            // Relevant categories tags
+            const relevantCats = a.relevantAudits ? "" : "";
+            const tags = (a.tags || [])
+              .map((t) => `<span class="insight-tag">${escHtml(t)}</span>`)
+              .join("");
+
+            const desc = a.description
+              ? a.description.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+              : "";
+            const dispVal = a.displayValue || "";
+
+            const tableHtml = renderInsightDetailTable(a.details, lhr);
+
+            return `<div class="insight-item" id="${iid}">
+      <div class="insight-item-header" onclick="toggleInsight('${iid}')">
+        ${dot}
+        <span class="insight-title">${escHtml(a.title)}</span>
+        ${savings}
+        <span class="insight-chevron">›</span>
+      </div>
+      <div class="insight-body">
+        ${dispVal ? `<div class="insight-display-val">${escHtml(dispVal)}</div>` : ""}
+        ${desc ? `<div class="insight-desc">${escHtml(desc)}</div>` : ""}
+        ${tableHtml}
+      </div>
+    </div>`;
+          })
+          .join("");
+      }
+
+      function toggleInsight(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle("open");
       }
 
       // ── Run audit ─────────────────────────────────────────────────────
@@ -3193,6 +4090,66 @@
             ),
           );
       }
+      // ── Schedule popup ──────────────────────────────────────────────
+      function openSchedPopup(clientId) {
+        const c = clients.find((x) => x.id === clientId);
+        if (!c) return;
+        const overlay = document.getElementById("schedPopupOverlay");
+        const body = document.getElementById("schedPopupBody");
+        const tzEl = document.getElementById("schedPopupTz");
+        if (!overlay || !body) return;
+        if (tzEl) tzEl.textContent = getTzAbbr();
+
+        const presetBtns = CRON_PRESETS.map(
+          (p) =>
+            `<div class="preset-btn ${c.schedule === p.cron ? "selected" : ""}" onclick="selectPreset('${p.cron}');document.getElementById('schedPopupBody').querySelector('.preset-btn.selected')?.classList.remove('selected');this.classList.add('selected')">
+      <span class="preset-label">${p.label}</span><span class="preset-cron">${p.cron}</span>
+    </div>`,
+        ).join("");
+
+        const schedHtml = c.schedule
+          ? `
+    <div class="schedule-status">
+      <div class="schedule-status-left">
+        ${c.schedule_enabled && c.job_active ? '<span class="schedule-active-dot"></span>' : '<span style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;flex-shrink:0"></span>'}
+        <div>
+          <div class="schedule-status-text">${c.schedule_enabled && c.job_active ? "Active — " : "Paused — "}${descSched(c.schedule)}</div>
+          <div class="schedule-status-cron">${c.schedule}</div>
+        </div>
+      </div>
+      <div class="schedule-actions">
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:.72rem" onclick="toggleSchedule(${c.id});closeSchedPopup();setTimeout(()=>openSchedPopup(${c.id}),300)">${c.schedule_enabled ? "⏸ Pause" : "▶ Resume"}</button>
+        <button class="btn btn-danger" style="padding:5px 10px;font-size:.72rem" onclick="removeSchedule(${c.id});closeSchedPopup()">✕ Clear</button>
+      </div>
+    </div>`
+          : `<div style="font-size:.8rem;color:var(--muted)">No schedule set. Pick a preset or enter a cron below.</div>`;
+
+        body.innerHTML = `
+    <div>
+      <div class="schedule-section-title" style="margin-bottom:.75rem"><span style="color:var(--purple)">◷</span> Quick Presets <span id="schedPopupTz" style="font-size:.65rem;color:var(--muted);font-weight:400;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.2);padding:1px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace"></span></div>
+      <div class="preset-grid">${presetBtns}</div>
+    </div>
+    <div class="field">
+      <label>Custom Cron Expression</label>
+      <div class="cron-input-row">
+        <input id="customCron" type="text" placeholder="0 9 * * 1-5" value="${escHtml(c.schedule || "")}" oninput="onCronInput(this.value)"/>
+        <button class="btn btn-purple" id="saveScheduleBtn" onclick="saveSchedule(${c.id})">Save</button>
+      </div>
+      <div class="cron-hint">min &nbsp; hour &nbsp; day &nbsp; month &nbsp; weekday &nbsp;|&nbsp; e.g. <span style="color:var(--text2)">0 9 * * 1-5</span> = weekdays at 9am</div>
+    </div>
+    ${schedHtml}`;
+
+        overlay.classList.add("open");
+        document.addEventListener("keydown", schedPopupEsc);
+      }
+      function closeSchedPopup() {
+        document.getElementById("schedPopupOverlay")?.classList.remove("open");
+        document.removeEventListener("keydown", schedPopupEsc);
+      }
+      function schedPopupEsc(e) {
+        if (e.key === "Escape") closeSchedPopup();
+      }
+
       async function saveSchedule(id) {
         const e = document.getElementById("customCron")?.value.trim();
         if (!e) return showToast("Enter a cron expression first", "error");
@@ -3437,6 +4394,266 @@
       }
       updateClock();
       setInterval(updateClock, 1000);
+
+      // ── Backup panel ──────────────────────────────────────────────────
+      function openBackupPanel() {
+        document.getElementById("backupPanel").classList.add("open");
+        document.getElementById("backupOverlay").classList.add("open");
+        loadBackupList();
+      }
+      function closeBackupPanel() {
+        document.getElementById("backupPanel").classList.remove("open");
+        document.getElementById("backupOverlay").classList.remove("open");
+      }
+
+      function triggerExportDownload() {
+        const a = document.createElement("a");
+        a.href = "/api/backup/export";
+        a.download = "";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast("Backup download started", "info");
+      }
+
+      async function triggerSaveBackup() {
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "⏳ Saving…";
+        try {
+          const res = await fetch("/api/backup/trigger", { method: "POST" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          showToast("Backup saved to backups/ folder", "success");
+          loadBackupList();
+        } catch (e) {
+          showToast(e.message, "error");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = orig;
+        }
+      }
+
+      async function loadBackupList() {
+        const el = document.getElementById("backupFileList");
+        if (!el) return;
+        el.innerHTML = '<div class="backup-empty">Loading…</div>';
+        try {
+          const res = await fetch("/api/backup/list");
+          const files = await res.json();
+          if (!files.length) {
+            el.innerHTML =
+              '<div class="backup-empty">No saved backups yet.</div>';
+            return;
+          }
+          el.innerHTML = files
+            .map((f) => {
+              const kb = (f.size / 1024).toFixed(1);
+              const date = new Date(f.created).toLocaleString();
+              return `<div class="backup-file-item">
+        <div style="flex:1;min-width:0">
+          <div class="backup-file-name" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
+          <div class="backup-file-size">${kb} KiB &nbsp;·&nbsp; ${date}</div>
+        </div>
+        <div class="backup-file-actions">
+          <button class="btn btn-ghost" style="font-size:.65rem;padding:3px 8px" onclick="downloadSavedBackup('${escHtml(f.name)}')">⬇</button>
+          <button class="btn btn-danger" style="font-size:.65rem;padding:3px 8px" onclick="deleteSavedBackup('${escHtml(f.name)}',this)">🗑</button>
+        </div>
+      </div>`;
+            })
+            .join("");
+        } catch (e) {
+          el.innerHTML =
+            '<div class="backup-empty">Failed to load backup list.</div>';
+        }
+      }
+
+      function downloadSavedBackup(name) {
+        const a = document.createElement("a");
+        a.href = `/api/backup/download/${encodeURIComponent(name)}`;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      async function deleteSavedBackup(name, btn) {
+        if (!confirm("Delete backup " + name + "?")) return;
+        btn.disabled = true;
+        try {
+          const res = await fetch("/api/backup/" + encodeURIComponent(name), {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error((await res.json()).error);
+          showToast("Backup deleted");
+          loadBackupList();
+        } catch (e) {
+          showToast(e.message, "error");
+          btn.disabled = false;
+        }
+      }
+
+      function handleBackupDrop(e) {
+        e.preventDefault();
+        document.getElementById("backupUploadZone").classList.remove("drag");
+        const file = e.dataTransfer.files[0];
+        if (file) handleBackupFile(file);
+      }
+
+      async function handleBackupFile(file) {
+        if (!file || !file.name.endsWith(".zip")) {
+          showToast("Please select a .zip backup file", "error");
+          return;
+        }
+        const prog = document.getElementById("backupRestoreProgress");
+        prog.className = "backup-restore-progress show";
+        prog.textContent = "Uploading " + file.name + "...";
+
+        const form = new FormData();
+        form.append("backup", file);
+        try {
+          const res = await fetch("/api/backup/import", {
+            method: "POST",
+            body: form,
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Restore failed");
+          const r = data.restored;
+          prog.innerHTML =
+            "✅ Restore complete!<br>" +
+            "&nbsp;• <b>" +
+            r.clients +
+            "</b> clients restored<br>" +
+            "&nbsp;• <b>" +
+            r.audits +
+            "</b> audit records restored<br>" +
+            "&nbsp;• <b>" +
+            r.reports +
+            "</b> report files restored" +
+            (r.errors && r.errors.length
+              ? '<br><span style="color:var(--accent)">⚠️ ' +
+                r.errors.length +
+                " warning(s)</span>"
+              : "");
+          showToast("Backup restored successfully", "success");
+          await loadClients();
+          if (selectedClient) {
+            selectedClient =
+              clients.find((c) => c.id === selectedClient.id) || null;
+            if (selectedClient) renderClientDetail();
+          }
+        } catch (e) {
+          prog.innerHTML =
+            '<span style="color:var(--red)">❌ ' +
+            escHtml(e.message) +
+            "</span>";
+          showToast(e.message, "error");
+        }
+      }
     </script>
+
+    <!-- Backup overlay -->
+    <div
+      class="backup-overlay"
+      id="backupOverlay"
+      onclick="closeBackupPanel()"
+    ></div>
+
+    <!-- Backup panel -->
+    <div class="backup-panel" id="backupPanel">
+      <div class="backup-panel-header">
+        <span class="backup-panel-title">💾 Backup &amp; Restore</span>
+        <button class="chart-close" onclick="closeBackupPanel()">
+          ✕ Close
+        </button>
+      </div>
+      <div class="backup-panel-body">
+        <!-- Manual export -->
+        <div>
+          <div class="backup-section-title">Export</div>
+          <div class="backup-info" style="margin-bottom: 0.65rem">
+            Downloads a <b>.zip</b> containing your full database snapshot (all
+            clients + audit history) and all Lighthouse report JSON files.
+          </div>
+          <div class="backup-actions">
+            <button
+              class="btn btn-primary"
+              onclick="triggerExportDownload()"
+              style="width: 100%"
+            >
+              ⬇ Download Backup Now
+            </button>
+            <button
+              class="btn btn-ghost"
+              onclick="triggerSaveBackup()"
+              style="width: 100%"
+            >
+              💾 Save to backups/ Folder
+            </button>
+          </div>
+        </div>
+
+        <!-- Saved backups list -->
+        <div>
+          <div
+            class="backup-section-title"
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            "
+          >
+            <span>Saved Backups</span>
+            <button
+              class="btn btn-ghost"
+              onclick="loadBackupList()"
+              style="font-size: 0.65rem; padding: 2px 7px"
+            >
+              ↺ Refresh
+            </button>
+          </div>
+          <div class="backup-info" style="margin-bottom: 0.65rem">
+            Auto-backup runs daily at 2:00 AM and saves to <b>./backups/</b>.
+            Keeps last <b>7</b> backups.
+          </div>
+          <div id="backupFileList">
+            <div class="backup-empty">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Import / Restore -->
+        <div>
+          <div class="backup-section-title">Import / Restore</div>
+          <div class="backup-info" style="margin-bottom: 0.65rem">
+            Upload a <b>lh-backup-*.zip</b> file to restore. Existing records
+            are preserved — only new data is added (no data is wiped).
+          </div>
+          <div
+            class="backup-upload-zone"
+            id="backupUploadZone"
+            onclick="document.getElementById('backupFileInput').click()"
+            ondragover="
+              event.preventDefault();
+              this.classList.add('drag');
+            "
+            ondragleave="this.classList.remove('drag')"
+            ondrop="handleBackupDrop(event)"
+          >
+            <input
+              type="file"
+              id="backupFileInput"
+              accept=".zip"
+              onchange="handleBackupFile(this.files[0])"
+            />
+            <div class="backup-upload-icon">📂</div>
+            <div class="backup-upload-text">
+              <b>Click to choose</b> or drag &amp; drop<br />a backup .zip file
+            </div>
+          </div>
+          <div class="backup-restore-progress" id="backupRestoreProgress"></div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
