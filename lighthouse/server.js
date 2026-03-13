@@ -53,6 +53,8 @@ async function drainQueue() {
     reject(err);
   } finally {
     queueRunning = false;
+    // Give V8 a moment to GC before the next audit — avoids heap pressure buildup
+    await new Promise((r) => setTimeout(r, 2000));
     drainQueue(); // process next
   }
 }
@@ -147,14 +149,17 @@ async function runAudit(url, formFactor, client_id) {
     chrome = await chromeLauncher.launch({
       chromePath: process.env.CHROME_PATH || "/usr/bin/chromium",
       chromeFlags: [
-        "--headless=new", // new headless mode — supports screenshots
+        "--headless=new",
         "--no-sandbox",
         "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage", // use /tmp instead of /dev/shm to avoid OOM
+        "--disable-dev-shm-usage",
         "--disable-gpu",
         "--no-zygote",
         "--hide-scrollbars",
         "--mute-audio",
+        "--user-data-dir=/tmp/chrome-profile", // explicit dir avoids first-run profile creation issues
+        "--disable-extensions",
+        "--disable-background-networking",
       ],
     });
 
@@ -171,6 +176,7 @@ async function runAudit(url, formFactor, client_id) {
           "best-practices",
           "seo",
         ],
+        disableFullPageScreenshot: true, // skips base64 screenshot — saves 5-15MB per audit
       },
       {
         extends: "lighthouse:default",
@@ -178,6 +184,7 @@ async function runAudit(url, formFactor, client_id) {
       },
     );
 
+    // Extract scores & metrics from lhr FIRST before we do anything memory-heavy
     const lhr = runnerResult.lhr;
     const { categories } = lhr;
 
@@ -199,23 +206,23 @@ async function runAudit(url, formFactor, client_id) {
       cls: auditVal(lhr, "cumulative-layout-shift"),
     };
 
-    // Write report to volume file using a stream to avoid holding full JSON in memory
+    // runnerResult.report is already a JSON string — Lighthouse serialised it internally.
+    // Write it directly to disk without JSON.stringify() to avoid a second full copy in memory.
     let reportPath = null;
     try {
       const fileName = `audit_${client_id || "anon"}_${Date.now()}.json`;
       reportPath = path.join(REPORTS_DIR, fileName);
-      const writeStream = fs.createWriteStream(reportPath);
-      await new Promise((resolve, reject) => {
-        const str = JSON.stringify(lhr);
-        writeStream.end(str, (err) => (err ? reject(err) : resolve()));
-      });
+      await fs.promises.writeFile(reportPath, runnerResult.report, "utf8");
     } catch (fsErr) {
       console.error("⚠️  Could not write report file:", fsErr.message);
       reportPath = null;
     }
 
-    // Free the large LHR object from memory now that we've extracted what we need
+    // Free both the object AND the pre-serialised string immediately
     runnerResult.lhr = null;
+    runnerResult.report = null;
+    // Explicitly nudge V8 to collect now rather than waiting for next allocation pressure
+    if (typeof global.gc === "function") global.gc();
 
     if (auditId) {
       await pool.query(
@@ -337,6 +344,17 @@ app.get("/audit", async (req, res) => {
 
 (async () => {
   await waitForDb();
+
+  // Pre-warm Lighthouse module on startup so the first audit doesn't pay
+  // the cold-import cost (~15-30s) while Chrome is already running
+  try {
+    console.log("⏳ Pre-loading Lighthouse module…");
+    await getLighthouse();
+    console.log("✅ Lighthouse module ready");
+  } catch (err) {
+    console.warn("⚠️  Lighthouse pre-load warning:", err.message);
+  }
+
   app.listen(PORT, () =>
     console.log(`🚀 Lighthouse service running on port ${PORT}`),
   );

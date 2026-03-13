@@ -895,6 +895,65 @@
         color: var(--muted);
         margin-top: 2px;
       }
+      .audit-info-display {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        cursor: default;
+      }
+      .audit-name-row {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .audit-edit-btn {
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.75rem;
+        padding: 2px 4px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .audit-info:hover .audit-edit-btn {
+        opacity: 1;
+      }
+      .audit-edit-btn:hover {
+        color: var(--accent);
+        background: rgba(245, 166, 35, 0.1);
+      }
+      .audit-edit-form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.1rem 0;
+      }
+      .audit-edit-input {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 0.85rem;
+        padding: 4px 8px;
+        outline: none;
+        width: 100%;
+        min-width: 0;
+        transition: border-color 0.15s;
+      }
+      .audit-edit-input:focus {
+        border-color: var(--accent);
+      }
+      .audit-edit-input.url-input {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+      }
+      .audit-edit-actions {
+        display: flex;
+        gap: 0.4rem;
+        margin-top: 0.1rem;
+      }
       .schedule-section {
         padding: 1.25rem;
         border-bottom: 1px solid var(--border);
@@ -2405,24 +2464,6 @@
       </div>
     </main>
 
-    <!-- Schedule popup overlay -->
-    <div
-      class="sched-popup-overlay"
-      id="schedPopupOverlay"
-      onclick="closeSchedPopup(event)"
-    >
-      <div class="sched-popup" id="schedPopup">
-        <div class="sched-popup-header">
-          <span class="sched-popup-title">◷ Auto-Schedule</span>
-          <span class="sched-tz-badge" id="schedTzBadge">UTC</span>
-          <button class="sched-popup-close" onclick="closeSchedPopup()">
-            ✕
-          </button>
-        </div>
-        <div class="sched-popup-body" id="schedPopupBody"></div>
-      </div>
-    </div>
-
     <!-- ── Schedule popup ── -->
     <div
       class="sched-popup-overlay"
@@ -3377,9 +3418,14 @@
     <div class="panel">
       <div class="audit-bar">
         <div class="audit-info">
-          <div style="font-size:1rem;font-weight:700">${escHtml(c.name)}</div>
-          <div class="audit-url">${escHtml(c.url)}</div>
-          <div class="audit-timestamp">${lastAudit}</div>
+          <div class="audit-info-display" id="auditInfoDisplay">
+            <div class="audit-name-row">
+              <div style="font-size:1rem;font-weight:700">${escHtml(c.name)}</div>
+              <button class="audit-edit-btn" onclick="openClientEdit(${c.id})" title="Edit name &amp; URL">✎</button>
+            </div>
+            <div class="audit-url">${escHtml(c.url)}</div>
+            <div class="audit-timestamp">${lastAudit}</div>
+          </div>
         </div>
         <div class="ff-toggle" title="${c.platform !== "both" ? "Locked to " + c.platform : "Switch audit device"}">
           <button class="ff-btn mobile-active active" data-ff="mobile" onclick="if(!this.classList.contains('locked'))setFormFactor('mobile')">📱 Mobile</button>
@@ -4102,7 +4148,7 @@
 
         const presetBtns = CRON_PRESETS.map(
           (p) =>
-            `<div class="preset-btn ${c.schedule === p.cron ? "selected" : ""}" onclick="selectPreset('${p.cron}');document.getElementById('schedPopupBody').querySelector('.preset-btn.selected')?.classList.remove('selected');this.classList.add('selected')">
+            `<div class="preset-btn ${c.schedule === p.cron ? "selected" : ""}" onclick="selectPreset('${p.cron}')">
       <span class="preset-label">${p.label}</span><span class="preset-cron">${p.cron}</span>
     </div>`,
         ).join("");
@@ -4549,6 +4595,115 @@
             escHtml(e.message) +
             "</span>";
           showToast(e.message, "error");
+        }
+      }
+
+      // ── Edit client name / URL ─────────────────────────────────────────
+      function openClientEdit(clientId) {
+        const c = clients.find((x) => x.id === clientId);
+        if (!c) return;
+        const display = document.getElementById("auditInfoDisplay");
+        if (!display) return;
+
+        display.innerHTML = `
+    <div class="audit-edit-form" id="auditEditForm">
+      <input class="audit-edit-input" id="editClientName" type="text" value="${escHtml(c.name)}" placeholder="Site name" maxlength="100"/>
+      <input class="audit-edit-input url-input" id="editClientUrl" type="url" value="${escHtml(c.url)}" placeholder="https://example.com"/>
+      <div class="audit-edit-actions">
+        <button class="btn btn-primary" style="font-size:.75rem;padding:4px 12px" onclick="saveClientEdit(${c.id})">Save</button>
+        <button class="btn btn-ghost"   style="font-size:.75rem;padding:4px 12px" onclick="cancelClientEdit(${c.id})">Cancel</button>
+      </div>
+    </div>`;
+
+        // Focus name field, select all
+        const nameInput = document.getElementById("editClientName");
+        if (nameInput) {
+          nameInput.focus();
+          nameInput.select();
+        }
+
+        // Save on Enter, cancel on Escape
+        document
+          .getElementById("auditEditForm")
+          .addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              saveClientEdit(c.id);
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              cancelClientEdit(c.id);
+            }
+          });
+      }
+
+      function cancelClientEdit(clientId) {
+        // Re-render the display view without a full panel reload
+        const c = clients.find((x) => x.id === clientId);
+        if (!c) return;
+        const display = document.getElementById("auditInfoDisplay");
+        if (!display) return;
+        const latest = currentAudits[0] || null;
+        const lastAudit = latest
+          ? `Last audited ${formatInTz(new Date(latest.audited_at))}`
+          : "Never audited";
+        display.innerHTML = `
+    <div class="audit-name-row">
+      <div style="font-size:1rem;font-weight:700">${escHtml(c.name)}</div>
+      <button class="audit-edit-btn" onclick="openClientEdit(${c.id})" title="Edit name &amp; URL">✎</button>
+    </div>
+    <div class="audit-url">${escHtml(c.url)}</div>
+    <div class="audit-timestamp">${lastAudit}</div>`;
+      }
+
+      async function saveClientEdit(clientId) {
+        const nameEl = document.getElementById("editClientName");
+        const urlEl = document.getElementById("editClientUrl");
+        if (!nameEl || !urlEl) return;
+
+        const name = nameEl.value.trim();
+        const url = urlEl.value.trim();
+        if (!name) {
+          nameEl.focus();
+          showToast("Name cannot be empty", "error");
+          return;
+        }
+        if (!url) {
+          urlEl.focus();
+          showToast("URL cannot be empty", "error");
+          return;
+        }
+
+        const saveBtn = document.querySelector("#auditEditForm .btn-primary");
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = "…";
+        }
+
+        try {
+          const res = await fetch(`/api/clients/${clientId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, url }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Save failed");
+
+          // Update local clients array
+          const idx = clients.findIndex((x) => x.id === clientId);
+          if (idx >= 0) clients[idx] = { ...clients[idx], name, url };
+          if (selectedClient?.id === clientId)
+            selectedClient = { ...selectedClient, name, url };
+
+          showToast("Client updated");
+          cancelClientEdit(clientId); // restore display view with new values
+          renderClientList(); // update sidebar
+        } catch (e) {
+          showToast(e.message, "error");
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save";
+          }
         }
       }
     </script>

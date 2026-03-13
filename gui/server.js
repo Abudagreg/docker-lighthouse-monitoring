@@ -169,6 +169,39 @@ app.post("/api/clients", async (req, res) => {
   }
 });
 
+app.patch("/api/clients/:id", async (req, res) => {
+  const { name, url } = req.body;
+  if (!name && !url)
+    return res.status(400).json({ error: "name or url required" });
+  try {
+    if (url) new URL(url); // validate URL format
+    const fields = [],
+      vals = [];
+    if (name) {
+      fields.push(`name=$${fields.length + 1}`);
+      vals.push(name);
+    }
+    if (url) {
+      fields.push(`url=$${fields.length + 1}`);
+      vals.push(url);
+    }
+    vals.push(req.params.id);
+    const result = await pool.query(
+      `UPDATE clients SET ${fields.join(",")} WHERE id=$${vals.length} RETURNING *`,
+      vals,
+    );
+    if (!result.rows.length)
+      return res.status(404).json({ error: "Client not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    if (err.code === "23505")
+      return res
+        .status(409)
+        .json({ error: "A client with that name or URL already exists." });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete("/api/clients/:id", async (req, res) => {
   try {
     stopJob(parseInt(req.params.id));

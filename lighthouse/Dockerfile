@@ -30,4 +30,4 @@ RUN rm -f package-lock.json && npm install --omit=dev
 COPY . .
 
 EXPOSE 3001
-CMD ["node", "--max-old-space-size=512", "server.js"]
+CMD ["node", "--max-old-space-size=1024", "--expose-gc", "server.js"]

@@ -21,8 +21,8 @@ services:
     container_name: lighthouse_service
     restart: unless-stopped
     shm_size: "1gb"
-    mem_limit: 1500m
-    memswap_limit: 1500m
+    mem_limit: 2g
+    memswap_limit: 2g
     environment:
       DB_HOST: db
       DB_PORT: 5432
