@@ -1,21 +1,14 @@
 const express = require("express");
-const chromeLauncher = require("chrome-launcher");
 const { Pool } = require("pg");
+const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
 const REPORTS_DIR = process.env.REPORTS_DIR || "/app/reports";
-// Ensure reports directory exists
-if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR, { recursive: true });
+const WORKER_PATH = path.join(__dirname, "audit-worker.js");
+const AUDIT_TIMEOUT_MS = parseInt(process.env.AUDIT_TIMEOUT_MS || "180000"); // 3 min per audit
 
-let lighthouseFn;
-async function getLighthouse() {
-  if (!lighthouseFn) {
-    const mod = await import("lighthouse");
-    lighthouseFn = mod.default ?? mod.lighthouse ?? mod;
-  }
-  return lighthouseFn;
-}
+if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR, { recursive: true });
 
 const app = express();
 app.use(express.json());
@@ -53,8 +46,8 @@ async function drainQueue() {
     reject(err);
   } finally {
     queueRunning = false;
-    // Give V8 a moment to GC before the next audit — avoids heap pressure buildup
-    await new Promise((r) => setTimeout(r, 2000));
+    // Brief pause between audits to let Chrome fully clean up before next spawn
+    await new Promise((r) => setTimeout(r, 1000));
     drainQueue(); // process next
   }
 }
@@ -125,9 +118,70 @@ function auditVal(lhr, key) {
   return v !== undefined && v !== null && !isNaN(v) ? v : null;
 }
 
+// ── Spawn one audit worker process per audit ─────────────────────
+// Each audit gets its own V8 heap. When it exits the OS reclaims all
+// memory instantly — no GC pressure accumulates across audits.
+function spawnAuditWorker(url, formFactor, clientId) {
+  return new Promise((resolve, reject) => {
+    const env = {
+      ...process.env,
+      AUDIT_URL: url,
+      AUDIT_FORM_FACTOR: formFactor,
+      AUDIT_CLIENT_ID: String(clientId || ""),
+      REPORTS_DIR,
+    };
+
+    const child = spawn(
+      process.execPath,
+      ["--max-old-space-size=1024", WORKER_PATH],
+      {
+        env,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => {
+      stdout += d.toString();
+    });
+    child.stderr.on("data", (d) => {
+      stderr += d.toString();
+    });
+
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(
+        new Error(`Audit worker timed out after ${AUDIT_TIMEOUT_MS / 1000}s`),
+      );
+    }, AUDIT_TIMEOUT_MS);
+
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (stderr) process.stderr.write(`[worker] ${stderr}`);
+      try {
+        const line = stdout.trim().split("\n").pop(); // last line = result JSON
+        const result = JSON.parse(line);
+        if (result.success) resolve(result);
+        else reject(new Error(result.error || "Worker audit failed"));
+      } catch {
+        reject(
+          new Error(
+            `Worker exited ${code} with unparseable output: ${stdout.slice(0, 200)}`,
+          ),
+        );
+      }
+    });
+
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
 // ── Core audit function (runs inside the queue) ───────────────────
 async function runAudit(url, formFactor, client_id) {
-  let chrome = null;
   let auditId = null;
 
   // Create a pending audit row
@@ -146,83 +200,12 @@ async function runAudit(url, formFactor, client_id) {
   try {
     console.log(`🔍 Auditing [${formFactor}]: ${url}`);
 
-    chrome = await chromeLauncher.launch({
-      chromePath: process.env.CHROME_PATH || "/usr/bin/chromium",
-      chromeFlags: [
-        "--headless=new",
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--no-zygote",
-        "--hide-scrollbars",
-        "--mute-audio",
-        "--user-data-dir=/tmp/chrome-profile", // explicit dir avoids first-run profile creation issues
-        "--disable-extensions",
-        "--disable-background-networking",
-      ],
-    });
-
-    const lighthouse = await getLighthouse();
-    const runnerResult = await lighthouse(
+    // Run in isolated child process — full memory cleanup on exit
+    const { scores, metrics, reportPath } = await spawnAuditWorker(
       url,
-      {
-        logLevel: "error",
-        output: "json",
-        port: chrome.port,
-        onlyCategories: [
-          "performance",
-          "accessibility",
-          "best-practices",
-          "seo",
-        ],
-        disableFullPageScreenshot: true, // skips base64 screenshot — saves 5-15MB per audit
-      },
-      {
-        extends: "lighthouse:default",
-        settings: getLighthouseConfig(formFactor),
-      },
+      formFactor,
+      client_id,
     );
-
-    // Extract scores & metrics from lhr FIRST before we do anything memory-heavy
-    const lhr = runnerResult.lhr;
-    const { categories } = lhr;
-
-    const scores = {
-      performance: Math.round((categories.performance?.score || 0) * 100),
-      accessibility: Math.round((categories.accessibility?.score || 0) * 100),
-      best_practices: Math.round(
-        (categories["best-practices"]?.score || 0) * 100,
-      ),
-      seo: Math.round((categories.seo?.score || 0) * 100),
-    };
-
-    const metrics = {
-      fcp_ms: auditVal(lhr, "first-contentful-paint"),
-      lcp_ms: auditVal(lhr, "largest-contentful-paint"),
-      tbt_ms: auditVal(lhr, "total-blocking-time"),
-      si_ms: auditVal(lhr, "speed-index"),
-      tti_ms: auditVal(lhr, "interactive"),
-      cls: auditVal(lhr, "cumulative-layout-shift"),
-    };
-
-    // runnerResult.report is already a JSON string — Lighthouse serialised it internally.
-    // Write it directly to disk without JSON.stringify() to avoid a second full copy in memory.
-    let reportPath = null;
-    try {
-      const fileName = `audit_${client_id || "anon"}_${Date.now()}.json`;
-      reportPath = path.join(REPORTS_DIR, fileName);
-      await fs.promises.writeFile(reportPath, runnerResult.report, "utf8");
-    } catch (fsErr) {
-      console.error("⚠️  Could not write report file:", fsErr.message);
-      reportPath = null;
-    }
-
-    // Free both the object AND the pre-serialised string immediately
-    runnerResult.lhr = null;
-    runnerResult.report = null;
-    // Explicitly nudge V8 to collect now rather than waiting for next allocation pressure
-    if (typeof global.gc === "function") global.gc();
 
     if (auditId) {
       await pool.query(
@@ -291,18 +274,6 @@ async function runAudit(url, formFactor, client_id) {
         .catch(() => {});
     }
     throw err;
-  } finally {
-    // Safely kill Chrome — guard against undefined or missing kill()
-    if (chrome) {
-      try {
-        if (typeof chrome.kill === "function") {
-          await chrome.kill();
-        }
-      } catch (killErr) {
-        console.warn("⚠️  Chrome kill warning:", killErr.message);
-      }
-      chrome = null;
-    }
   }
 }
 
@@ -344,16 +315,6 @@ app.get("/audit", async (req, res) => {
 
 (async () => {
   await waitForDb();
-
-  // Pre-warm Lighthouse module on startup so the first audit doesn't pay
-  // the cold-import cost (~15-30s) while Chrome is already running
-  try {
-    console.log("⏳ Pre-loading Lighthouse module…");
-    await getLighthouse();
-    console.log("✅ Lighthouse module ready");
-  } catch (err) {
-    console.warn("⚠️  Lighthouse pre-load warning:", err.message);
-  }
 
   app.listen(PORT, () =>
     console.log(`🚀 Lighthouse service running on port ${PORT}`),
